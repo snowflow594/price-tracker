@@ -30,12 +30,16 @@ router.post('/', async (req, res) => {
     );
     const product = rows[0];
 
-    const scraped = await getProductPrice(url);
-    if (scraped?.price) {
-      await pool.query(
-        'INSERT INTO price_history (product_id, price, currency) VALUES ($1, $2, $3)',
-        [product.id, scraped.price, scraped.currency]
-      );
+    try {
+      const scraped = await getProductPrice(url);
+      if (scraped?.price) {
+        await pool.query(
+          'INSERT INTO price_history (product_id, price, currency) VALUES ($1, $2, $3)',
+          [product.id, scraped.price, scraped.currency]
+        );
+      }
+    } catch (scrapeErr) {
+      console.warn(`Precio inicial no obtenido para "${name}": ${scrapeErr.message}`);
     }
 
     res.status(201).json(product);

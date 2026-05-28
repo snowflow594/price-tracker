@@ -5,6 +5,7 @@ require('dotenv').config();
 const pool = require('./db/pool');
 const productsRouter = require('./routes/products');
 const amazonRouter = require('./routes/amazon');
+const { startPriceUpdaterJob, updateAllPrices } = require('./jobs/priceUpdater');
 
 const app = express();
 
@@ -13,6 +14,12 @@ app.use(express.json());
 
 app.use('/api/products', productsRouter);
 app.use('/api/amazon', amazonRouter);
+
+// Disparo manual del cron (para testing)
+app.post('/api/jobs/update-prices', async (req, res) => {
+  res.json({ message: 'Actualización iniciada en background.' });
+  updateAllPrices().catch(console.error);
+});
 
 app.get('/health', async (req, res) => {
   try {
@@ -26,4 +33,5 @@ app.get('/health', async (req, res) => {
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
+  startPriceUpdaterJob();
 });
