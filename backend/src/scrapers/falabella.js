@@ -3,10 +3,18 @@ const { launchBrowser } = require('./browserHelper');
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 function parsePricePEN(priceText) {
-  // "S/ 6,399" → 6399 | "S/ 1,749.90" → 1749.90
-  const first = priceText.split('\n')[0];
-  const cleaned = first.replace(/[^0-9,.]/g, '').replace(',', '');
-  return parseFloat(cleaned) || null;
+  if (!priceText) return null;
+  const lines = priceText.split('\n').map(l => l.trim()).filter(Boolean);
+  for (const line of lines) {
+    // Skip lines that are labels without numbers (e.g. "CMR", "Internet", "Antes:")
+    const digits = line.replace(/[^0-9]/g, '');
+    if (digits.length < 2) continue;
+    // Remove thousands commas, keep decimal dot
+    const cleaned = line.replace(/[^0-9.]/g, '');
+    const val = parseFloat(cleaned);
+    if (val > 1) return val;
+  }
+  return null;
 }
 
 async function searchProducts(query, limit = 10) {
