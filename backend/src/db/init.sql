@@ -2,8 +2,10 @@ CREATE TABLE IF NOT EXISTS products (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   url TEXT NOT NULL,
-  source VARCHAR(50) NOT NULL,  -- 'mercadolibre' | 'amazon'
-  created_at TIMESTAMP DEFAULT NOW()
+  source VARCHAR(50) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  target_price NUMERIC,
+  alert_sent_at TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS price_history (

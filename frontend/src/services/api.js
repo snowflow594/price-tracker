@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const api = axios.create({ baseURL: 'http://localhost:3001' });
+const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001' });
 
 export const searchML = (q) => api.get(`/api/products/search?q=${encodeURIComponent(q)}`).then(r => r.data);
 export const searchFalabella = (q, limit = 10) => api.get(`/api/falabella/search?q=${encodeURIComponent(q)}&limit=${limit}`).then(r => r.data);

@@ -3,6 +3,8 @@ const cors = require('cors');
 require('dotenv').config();
 
 const pool = require('./db/pool');
+const fs = require('fs');
+const path = require('path');
 const productsRouter = require('./routes/products');
 const amazonRouter = require('./routes/amazon');
 const falabellaRouter = require('./routes/falabella');
@@ -32,8 +34,23 @@ app.get('/health', async (req, res) => {
   }
 });
 
+async function runMigration() {
+  try {
+    const sql = fs.readFileSync(path.join(__dirname, 'db', 'init.sql'), 'utf8');
+    await pool.query(sql);
+    // Add columns added after initial migration (idempotent)
+    await pool.query('ALTER TABLE products ADD COLUMN IF NOT EXISTS target_price NUMERIC');
+    await pool.query('ALTER TABLE products ADD COLUMN IF NOT EXISTS alert_sent_at TIMESTAMP');
+    console.log('Base de datos lista.');
+  } catch (err) {
+    console.error('Error en migración:', err.message);
+  }
+}
+
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
-  startPriceUpdaterJob();
+runMigration().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Servidor corriendo en http://localhost:${PORT}`);
+    startPriceUpdaterJob();
+  });
 });
