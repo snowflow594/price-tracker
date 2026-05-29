@@ -18,7 +18,7 @@ router.get('/search', async (req, res) => {
 
 // Guardar un producto y registrar su precio actual
 router.post('/', async (req, res) => {
-  const { name, url, source } = req.body;
+  const { name, url, source, initial_price, currency } = req.body;
   if (!name || !url || !source) {
     return res.status(400).json({ error: 'Faltan campos: name, url, source' });
   }
@@ -30,16 +30,23 @@ router.post('/', async (req, res) => {
     );
     const product = rows[0];
 
-    try {
-      const scraped = await getProductPrice(url);
-      if (scraped?.price) {
-        await pool.query(
-          'INSERT INTO price_history (product_id, price, currency) VALUES ($1, $2, $3)',
-          [product.id, scraped.price, scraped.currency]
-        );
+    if (initial_price && currency) {
+      await pool.query(
+        'INSERT INTO price_history (product_id, price, currency) VALUES ($1, $2, $3)',
+        [product.id, initial_price, currency]
+      );
+    } else {
+      try {
+        const scraped = await getProductPrice(url);
+        if (scraped?.price) {
+          await pool.query(
+            'INSERT INTO price_history (product_id, price, currency) VALUES ($1, $2, $3)',
+            [product.id, scraped.price, scraped.currency]
+          );
+        }
+      } catch (scrapeErr) {
+        console.warn(`Precio inicial no obtenido para "${name}": ${scrapeErr.message}`);
       }
-    } catch (scrapeErr) {
-      console.warn(`Precio inicial no obtenido para "${name}": ${scrapeErr.message}`);
     }
 
     res.status(201).json(product);
@@ -52,7 +59,8 @@ router.post('/', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT p.*, ph.price, ph.currency, ph.scraped_at
+      SELECT p.id, p.name, p.url, p.source, p.created_at, p.target_price,
+             ph.price, ph.currency, ph.scraped_at
       FROM products p
       LEFT JOIN price_history ph ON ph.id = (
         SELECT id FROM price_history
@@ -63,6 +71,33 @@ router.get('/', async (req, res) => {
       ORDER BY p.created_at DESC
     `);
     res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Guardar precio objetivo
+router.patch('/:id/target', async (req, res) => {
+  const { target_price } = req.body;
+  if (target_price == null) return res.status(400).json({ error: 'Falta target_price' });
+  try {
+    const { rows } = await pool.query(
+      'UPDATE products SET target_price = $1, alert_sent_at = NULL WHERE id = $2 RETURNING id, target_price',
+      [target_price, req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Producto no encontrado' });
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Eliminar un producto y su historial
+router.delete('/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM price_history WHERE product_id = $1', [req.params.id]);
+    await pool.query('DELETE FROM products WHERE id = $1', [req.params.id]);
+    res.status(204).end();
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

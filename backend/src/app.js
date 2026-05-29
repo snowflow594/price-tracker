@@ -5,6 +5,7 @@ require('dotenv').config();
 const pool = require('./db/pool');
 const productsRouter = require('./routes/products');
 const amazonRouter = require('./routes/amazon');
+const falabellaRouter = require('./routes/falabella');
 const { startPriceUpdaterJob, updateAllPrices } = require('./jobs/priceUpdater');
 
 const app = express();
@@ -14,6 +15,7 @@ app.use(express.json());
 
 app.use('/api/products', productsRouter);
 app.use('/api/amazon', amazonRouter);
+app.use('/api/falabella', falabellaRouter);
 
 // Disparo manual del cron (para testing)
 app.post('/api/jobs/update-prices', async (req, res) => {
