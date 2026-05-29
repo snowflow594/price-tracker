@@ -56,8 +56,7 @@ async function getProductPrice(productUrl) {
     await page.goto(productUrl, { waitUntil: 'networkidle2', timeout: 40000 });
     await page.waitForSelector('[class*="Price"], .fb-price, [data-testid*="price"], .jsx-price', { timeout: 15000 }).catch(() => null);
 
-    return await page.evaluate((url) => {
-      // Try multiple price selectors for the product page
+    const raw = await page.evaluate((url) => {
       const selectors = [
         '[data-testid="price-offering"]',
         '.fb-money-price',
@@ -71,7 +70,6 @@ async function getProductPrice(productUrl) {
         if (el) { priceText = el.innerText; break; }
       }
       if (!priceText) {
-        // Fallback: find any element with "S/" that looks like a price
         const all = Array.from(document.querySelectorAll('*')).find(e =>
           e.children.length === 0 && e.innerText && e.innerText.trim().startsWith('S/')
         );
@@ -80,6 +78,8 @@ async function getProductPrice(productUrl) {
       const title = document.querySelector('h1')?.innerText?.trim() || null;
       return { priceText, name: title, url };
     }, productUrl);
+    const price = parsePricePEN(raw.priceText || '');
+    return { price, currency: 'PEN', name: raw.name, url: raw.url };
   } finally {
     await browser.close();
   }

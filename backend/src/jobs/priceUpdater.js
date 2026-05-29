@@ -1,6 +1,6 @@
 const cron = require('node-cron');
 const pool = require('../db/pool');
-const { searchProducts: searchFalabella } = require('../scrapers/falabella');
+const { getProductPrice: getFalabellaPrice } = require('../scrapers/falabella');
 const { getProductPrice: getAmazonPrice } = require('../scrapers/amazon');
 const { sendPriceAlert } = require('../services/mailer');
 
@@ -8,10 +8,7 @@ async function fetchCurrentPrice(product) {
   if (product.source === 'amazon') {
     return getAmazonPrice(product.url);
   }
-  // Falabella y otros: re-busca por nombre y toma el primer resultado
-  const results = await searchFalabella(product.name, 1);
-  if (!results.length) throw new Error('Sin resultados en búsqueda');
-  return results[0];
+  return getFalabellaPrice(product.url);
 }
 
 async function checkAndSendAlert(product, newPrice, currency) {
