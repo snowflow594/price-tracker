@@ -29,9 +29,12 @@ async function searchProducts(query, limit = 10) {
     });
 
     const isCaptcha = await page.$('form[action="/errors/validateCaptcha"]');
-    if (isCaptcha) throw new Error('Amazon bloqueó la solicitud con CAPTCHA');
+    if (isCaptcha) throw new Error('AMAZON_BLOCKED');
 
-    await page.waitForSelector('[data-component-type="s-search-result"]', { timeout: 15000 });
+    const hasResults = await page.waitForSelector('[data-component-type="s-search-result"]', { timeout: 15000 })
+      .then(() => true).catch(() => false);
+
+    if (!hasResults) throw new Error('AMAZON_BLOCKED');
 
     const results = await page.evaluate((limit) => {
       const cards = Array.from(
@@ -72,7 +75,7 @@ async function getProductPrice(productUrl) {
     await page.goto(productUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
     const isCaptcha = await page.$('form[action="/errors/validateCaptcha"]');
-    if (isCaptcha) throw new Error('Amazon bloqueó la solicitud con CAPTCHA');
+    if (isCaptcha) throw new Error('AMAZON_BLOCKED');
 
     await page.waitForSelector('.a-price-whole', { timeout: 15000 });
 

@@ -18,6 +18,7 @@ const T = {
     view: 'Ver', suggested: 'Búsquedas populares', searching: 'Buscando…',
     loadingMore: 'Cargando más…', loadMore: 'Ver más resultados',
     error: 'Error al buscar. Intenta de nuevo.', noResults: 'Sin resultados. Intenta con otro término.',
+    blockedAmazon: 'Amazon bloquea búsquedas desde servidores cloud. Funciona en entorno local.',
   },
   en: {
     heroTitle: 'Track any price.', heroAccent: 'Buy at the right moment.',
@@ -27,6 +28,7 @@ const T = {
     view: 'View', suggested: 'Popular searches', searching: 'Searching…',
     loadingMore: 'Loading more…', loadMore: 'Load more results',
     error: 'Search error. Please try again.', noResults: 'No results. Try a different term.',
+    blockedAmazon: 'Amazon blocks searches from cloud servers. Works in local environment.',
   },
 };
 
@@ -86,8 +88,9 @@ export default function Search({ lang, monitoredUrls, onAdded }) {
       const data = await fn(q, lim);
       setResults(data);
       if (!data.length) setError(t.noResults);
-    } catch {
-      setError(t.error);
+    } catch (err) {
+      const isBlocked = err?.response?.data?.blocked || err?.response?.status === 503;
+      setError(isBlocked && (plat || platform) === 'amazon' ? t.blockedAmazon : t.error);
     }
     setLoading(false);
   }

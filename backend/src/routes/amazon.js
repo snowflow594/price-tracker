@@ -10,7 +10,11 @@ router.get('/search', async (req, res) => {
     const results = await searchProducts(q, limit ? parseInt(limit) : 10);
     res.json(results);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    const blocked = err.message === 'AMAZON_BLOCKED';
+    res.status(blocked ? 503 : 500).json({
+      error: err.message,
+      blocked,
+    });
   }
 });
 
