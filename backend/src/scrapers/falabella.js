@@ -1,26 +1,6 @@
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-puppeteer.use(StealthPlugin());
+const { launchBrowser } = require('./browserHelper');
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-
-function getChromePath() {
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH;
-  if (process.platform === 'win32') return 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-  try {
-    const { execSync } = require('child_process');
-    return execSync('which chromium || which chromium-browser || which google-chrome', { stdio: ['pipe', 'pipe', 'ignore'] }).toString().trim().split('\n')[0];
-  } catch { return undefined; }
-}
-
-async function openBrowser() {
-  const executablePath = getChromePath();
-  return puppeteer.launch({
-    headless: true,
-    ...(executablePath ? { executablePath } : {}),
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--window-size=1280,800'],
-  });
-}
 
 function parsePricePEN(priceText) {
   // "S/ 6,399" → 6399 | "S/ 1,749.90" → 1749.90
@@ -30,7 +10,7 @@ function parsePricePEN(priceText) {
 }
 
 async function searchProducts(query, limit = 10) {
-  const browser = await openBrowser();
+  const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
     await page.setUserAgent(UA);
@@ -67,7 +47,7 @@ async function searchProducts(query, limit = 10) {
 }
 
 async function getProductPrice(productUrl) {
-  const browser = await openBrowser();
+  const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
     await page.setUserAgent(UA);

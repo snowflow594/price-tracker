@@ -1,6 +1,4 @@
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-puppeteer.use(StealthPlugin());
+const { launchBrowser } = require('./browserHelper');
 
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -16,15 +14,13 @@ async function openPage(browser) {
   const page = await browser.newPage();
   await page.setUserAgent(randomAgent());
   await page.setExtraHTTPHeaders({ 'Accept-Language': 'es-PE,es;q=0.9,en-US;q=0.8' });
-  // Calentar cookies con la homepage
   await page.goto('https://www.amazon.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
   await new Promise((r) => setTimeout(r, 1500));
   return page;
 }
 
 async function searchProducts(query, limit = 10) {
-  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
-
+  const browser = await launchBrowser();
   try {
     const page = await openPage(browser);
     await page.goto(`https://www.amazon.com/s?k=${encodeURIComponent(query)}`, {
@@ -70,8 +66,7 @@ async function searchProducts(query, limit = 10) {
 }
 
 async function getProductPrice(productUrl) {
-  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
-
+  const browser = await launchBrowser();
   try {
     const page = await openPage(browser);
     await page.goto(productUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
