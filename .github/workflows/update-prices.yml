@@ -1,0 +1,40 @@
+name: Update Prices
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # cada 6 horas: 0h, 6h, 12h, 18h UTC
+  workflow_dispatch:          # también permite dispararlo manualmente desde GitHub
+
+jobs:
+  update-prices:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Cache Puppeteer Chrome
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/puppeteer
+          key: puppeteer-chrome-${{ runner.os }}-${{ hashFiles('backend/package-lock.json') }}
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run price updater
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: node src/jobs/run-price-update.js

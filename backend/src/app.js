@@ -8,7 +8,7 @@ const path = require('path');
 const productsRouter = require('./routes/products');
 const amazonRouter = require('./routes/amazon');
 const falabellaRouter = require('./routes/falabella');
-const { startPriceUpdaterJob, updateAllPrices } = require('./jobs/priceUpdater');
+const { updateAllPrices } = require('./jobs/priceUpdater');
 
 const app = express();
 
@@ -51,6 +51,5 @@ const PORT = process.env.PORT || 3001;
 runMigration().then(() => {
   app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
-    startPriceUpdaterJob();
   });
 });
