@@ -16,6 +16,8 @@ export default function Icon({ name, size = 20, className = '', style }) {
     close: <path d="M6 6l12 12M18 6L6 18" {...c} />,
     plus: <path d="M12 5v14M5 12h14" {...c} />,
     refresh: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" {...c} />,
+    mail: <><rect x="2" y="4" width="20" height="16" rx="2" {...c} /><path d="M2 8l10 6 10-6" {...c} /></>,
+    github: <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" {...c} />,
   };
   return (
     <svg viewBox="0 0 24 24" style={s} className={className} aria-hidden="true">

@@ -355,8 +355,8 @@ export default function Search({ lang, monitoredUrls, onAdded }) {
           {limit >= MAX_LIMIT && results.length >= MAX_LIMIT && (
             <p className="text-center text-on-surface-variant text-xs mt-4">
               {lang === 'en'
-                ? 'Showing maximum results. Refine your search for more specific results.'
-                : 'Mostrando el máximo de resultados. Refina tu búsqueda para obtener resultados más específicos.'}
+                ? 'No more results to show. Try a more specific search term.'
+                : 'No hay más resultados para mostrar. Prueba con un término más específico.'}
             </p>
           )}
         </div>

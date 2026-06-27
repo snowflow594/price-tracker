@@ -4,6 +4,37 @@ import Dashboard from './pages/Dashboard';
 import Icon from './components/Icon';
 import './App.css';
 
+const FOOTER_MODALS = {
+  'Política de privacidad': {
+    en: { title: 'Privacy Policy', body: [
+      'Price Tracker is a personal portfolio project developed by Estefano Quispe.',
+      'This site does not collect, store, or share personal data of any kind.',
+      'No login is required and no tracking cookies are used.',
+      'Prices displayed are fetched from public sources (Mercado Libre official API) and are provided for informational purposes only. They may not reflect real-time availability or current offers.',
+    ]},
+    es: { title: 'Política de privacidad', body: [
+      'Price Tracker es un proyecto personal de portafolio desarrollado por Estefano Quispe.',
+      'Este sitio no recopila, almacena ni comparte datos personales de ningún tipo.',
+      'No se requiere inicio de sesión y no se utilizan cookies de seguimiento.',
+      'Los precios mostrados se obtienen de fuentes públicas (API oficial de Mercado Libre) y se presentan solo con fines informativos. Pueden no reflejar disponibilidad en tiempo real ni ofertas actuales.',
+    ]},
+  },
+  'Términos de uso': {
+    en: { title: 'Terms of Use', body: [
+      'Price Tracker is a personal portfolio project, not a commercial product.',
+      'The information shown (prices, product names, images) is obtained from public sources and is provided "as is", without any guarantee of accuracy or availability.',
+      'This tool is intended for personal use only. It may not be used for commercial purposes or redistribution of content.',
+      'The developer is not responsible for purchasing decisions made based on the prices shown.',
+    ]},
+    es: { title: 'Términos de uso', body: [
+      'Price Tracker es un proyecto personal de portafolio, no un producto comercial.',
+      'La información mostrada (precios, nombres de productos, imágenes) se obtiene de fuentes públicas y se presenta "tal cual", sin garantía de exactitud ni disponibilidad.',
+      'Esta herramienta es de uso personal. No puede utilizarse con fines comerciales ni redistribución del contenido obtenido.',
+      'El desarrollador no se hace responsable de las decisiones de compra tomadas en base a los precios mostrados.',
+    ]},
+  },
+};
+
 export default function App() {
   const [view, setView] = useState('dashboard');
   const [lang, setLang] = useState('es');
@@ -11,6 +42,7 @@ export default function App() {
   const [alertCount, setAlertCount] = useState(0);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [toast, setToast] = useState(null);
+  const [footerModal, setFooterModal] = useState(null);
   const toastTimer = useRef(null);
 
   function showToast(msg, tone = 'success') {
@@ -133,17 +165,91 @@ export default function App() {
         <div className="flex flex-col md:flex-row justify-between items-center max-w-[1280px] mx-auto px-8 py-6 gap-4">
           <div>
             <p className="font-bold text-on-surface">Price Tracker</p>
-            <p className="text-xs text-on-surface-variant mt-1">© 2024 Price Tracker. All rights reserved.</p>
+            <p className="text-xs text-on-surface-variant mt-1">© 2026 Price Tracker. All rights reserved.</p>
           </div>
           <div className="flex flex-wrap gap-6">
             {['Política de privacidad', 'Términos de uso', 'Contacto'].map(l => (
-              <span key={l} className="text-xs text-on-surface-variant hover:text-primary cursor-pointer transition-colors">
+              <button
+                key={l}
+                onClick={() => setFooterModal(l)}
+                className="text-xs text-on-surface-variant hover:text-primary cursor-pointer transition-colors bg-transparent border-none p-0"
+              >
                 {l}
-              </span>
+              </button>
             ))}
           </div>
         </div>
       </footer>
+
+      {/* Footer modals */}
+      {footerModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={() => setFooterModal(null)}
+        >
+          <div
+            className="bg-surface rounded-2xl shadow-xl max-w-lg w-full p-8 relative"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setFooterModal(null)}
+              className="absolute top-4 right-4 text-on-surface-variant hover:text-primary transition-colors"
+              aria-label="Cerrar"
+            >
+              <Icon name="close" size={20} />
+            </button>
+
+            {footerModal === 'Contacto' ? (
+              <>
+                <h2 className="text-lg font-bold text-on-surface mb-6">
+                  {lang === 'en' ? 'Contact' : 'Contacto'}
+                </h2>
+                <div className="flex flex-col gap-4">
+                  <a
+                    href="mailto:estefanoquispevasquez@gmail.com"
+                    className="flex items-center gap-3 p-4 rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors group"
+                  >
+                    <Icon name="mail" size={20} className="text-primary" />
+                    <div>
+                      <p className="text-xs text-on-surface-variant">{lang === 'en' ? 'Email' : 'Correo'}</p>
+                      <p className="text-sm font-medium text-on-surface group-hover:text-primary transition-colors">
+                        estefanoquispevasquez@gmail.com
+                      </p>
+                    </div>
+                  </a>
+                  <a
+                    href="https://github.com/snowflow594/price-tracker"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-4 rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors group"
+                  >
+                    <Icon name="github" size={20} className="text-primary" />
+                    <div>
+                      <p className="text-xs text-on-surface-variant">GitHub</p>
+                      <p className="text-sm font-medium text-on-surface group-hover:text-primary transition-colors">
+                        github.com/snowflow594/price-tracker
+                      </p>
+                    </div>
+                  </a>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-lg font-bold text-on-surface mb-4">
+                  {FOOTER_MODALS[footerModal]?.[lang]?.title}
+                </h2>
+                <div className="flex flex-col gap-3">
+                  {FOOTER_MODALS[footerModal]?.[lang]?.body.map((paragraph, i) => (
+                    <p key={i} className="text-sm text-on-surface-variant leading-relaxed">
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Toast */}
       {toast && (
