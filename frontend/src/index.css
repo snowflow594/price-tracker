@@ -1,1 +1,120 @@
-html { font-size: 16px; }
+@import "tailwindcss";
+
+@theme {
+  --font-family-sans: 'Inter', system-ui, sans-serif;
+  --font-family-mono: 'Geist', ui-monospace, monospace;
+
+  --color-primary: #006c49;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #10b981;
+  --color-on-primary-container: #00422b;
+
+  --color-secondary: #0058be;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #2170e4;
+  --color-on-secondary-container: #fefcff;
+
+  --color-tertiary: #855300;
+  --color-tertiary-container: #e29100;
+  --color-on-tertiary-container: #523200;
+
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+
+  --color-background: #f8f9ff;
+  --color-surface: #f8f9ff;
+  --color-surface-dim: #d0dbed;
+  --color-surface-variant: #d9e3f6;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #eff4ff;
+  --color-surface-container: #e6eeff;
+  --color-surface-container-high: #dee9fc;
+  --color-surface-container-highest: #d9e3f6;
+
+  --color-on-surface: #121c2a;
+  --color-on-surface-variant: #3c4a42;
+  --color-on-background: #121c2a;
+
+  --color-outline: #6c7a71;
+  --color-outline-variant: #bbcabf;
+}
+
+/* CSS vars used by SVG chart components (cannot use Tailwind classes inside SVG attributes) */
+:root {
+  --down: #10b981;
+  --up:   #ba1a1a;
+  --border: #e2e8f0;
+  --bg:   #f8f9ff;
+  --text: #121c2a;
+  --text-faint: #6c7a71;
+  --accent: #0058be;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+/* PriceChart SVG text */
+.pt-axis        { font-size: 11px; fill: #6c7a71; font-family: 'Geist', monospace; }
+.pt-target-label{ font-size: 11px; fill: #0058be; font-weight: 600; font-family: 'Geist', monospace; }
+.pt-extreme     { font-size: 11px; fill: #3c4a42; font-family: 'Geist', monospace; }
+
+/* PriceChart wrapper + range buttons */
+.pt-chart { position: relative; }
+.pt-chart-ranges { display: flex; gap: 4px; justify-content: flex-end; margin-bottom: 6px; }
+.pt-range {
+  padding: 4px 10px; border-radius: 6px;
+  font-size: 12px; font-weight: 600; font-family: 'Geist', monospace;
+  color: #6c7a71; background: #eff4ff; border: none; cursor: pointer; transition: .14s;
+}
+.pt-range:hover  { color: #121c2a; }
+.pt-range.is-active { background: rgba(0,88,190,.12); color: #0058be; }
+
+/* PriceChart tooltip */
+.pt-chart-tip {
+  position: absolute; top: -6px; pointer-events: none;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 9px;
+  padding: 7px 11px; box-shadow: 0 4px 12px rgba(0,0,0,.1); text-align: center;
+}
+.pt-chart-tip-price { font-family: 'Geist', monospace; font-weight: 700; font-size: 14px; color: #121c2a; }
+.pt-chart-tip-date  { font-size: 11px; color: #6c7a71; margin-top: 1px; }
+
+/* Modal */
+.pt-modal-scrim {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(0,0,0,.45); backdrop-filter: blur(4px);
+  display: grid; place-items: center; padding: 20px;
+  animation: fade .2s ease;
+}
+.pt-modal {
+  width: 100%; max-width: 500px; background: #fff;
+  border: 1px solid #e2e8f0; border-radius: 16px;
+  padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,.12);
+  animation: pop .24s cubic-bezier(.2,.9,.3,1.2);
+}
+.pt-modal-head {
+  display: flex; align-items: center; gap: 11px; margin-bottom: 18px;
+}
+.pt-modal-head h3 { flex: 1; margin: 0; font-size: 18px; font-weight: 700; color: #121c2a; }
+.pt-modal-range   { width: 100%; accent-color: #006c49; margin-bottom: 7px; }
+.pt-modal-scale   {
+  display: flex; justify-content: space-between;
+  font-size: 11px; color: #6c7a71; font-family: 'Geist', monospace; margin-bottom: 14px;
+}
+
+/* Toast */
+.pt-toast {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); z-index: 70;
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 20px; background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.12); font-size: 14px; font-weight: 600; color: #121c2a;
+  animation: toastIn .3s cubic-bezier(.2,.9,.3,1.2); max-width: 90vw; white-space: nowrap;
+}
+.pt-toast.tone-success svg { color: #10b981; }
+
+@keyframes fade    { from { opacity: 0; }                                        to { opacity: 1; } }
+@keyframes pop     { from { opacity: 0; transform: scale(.94) translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%,16px); }       to { opacity: 1; transform: translate(-50%,0); } }

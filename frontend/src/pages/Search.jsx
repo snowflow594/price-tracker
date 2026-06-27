@@ -1,65 +1,111 @@
 import { useState, useRef } from 'react';
-import { searchFalabella, searchAmazon, addProduct } from '../services/api';
+import { searchFalabella, addProduct } from '../services/api';
 import Icon from '../components/Icon';
-import Button from '../components/Button';
-import Thumb from '../components/Thumb';
-import PlatformTag from '../components/PlatformTag';
-import { money } from '../utils/format';
+import { money, thumbHue } from '../utils/format';
 
 const STEP = 10;
 const MAX_LIMIT = 30;
+const SUGGESTIONS = ['Laptop', 'iPhone', 'Auriculares', 'Smart TV', 'Monitor', 'Teclado'];
 
 const T = {
   es: {
-    heroTitle: 'Rastrea cualquier precio.', heroAccent: 'Compra en el momento justo.',
-    heroSub: 'Busca un producto en Falabella o Amazon, agrégalo a monitoreo y te avisamos cuando baje de tu precio objetivo.',
+    badge: 'Actualizaciones automáticas cada 6 horas',
+    heroTitle: 'Rastrea precios en las',
+    heroAccent: 'tiendas más grandes.',
+    heroSub: 'Deja de pagar de más. Recibe alertas cuando el precio de un producto llegue a tu objetivo.',
     placeholder: 'Busca un producto… ej. "laptop", "iPhone 15", "auriculares"',
-    results: 'resultados', monitor: 'Monitorear', monitoring: 'Monitoreando',
-    view: 'Ver', suggested: 'Búsquedas populares', searching: 'Buscando…',
-    loadingMore: 'Cargando más…', loadMore: 'Ver más resultados',
-    error: 'Error al buscar. Intenta de nuevo.', noResults: 'Sin resultados. Intenta con otro término.',
-    blockedAmazon: 'Amazon bloquea búsquedas desde servidores cloud. Funciona en entorno local.',
+    trackNow: 'Buscar',
+    searching: 'Buscando…',
+    suggested: 'Búsquedas populares',
+    items: 'productos',
+    monitor: 'Guardar en watchlist',
+    monitoring: 'En watchlist',
+    loadMore: 'Ver más resultados',
+    loadingMore: 'Cargando…',
+    noResults: 'Sin resultados. Intenta con otro término.',
+    error: 'Error al buscar. Intenta de nuevo.',
+    amazonTitle: 'Amazon no disponible en producción',
+    amazonMsg: 'Amazon bloquea el scraping automatizado desde servidores en la nube. La búsqueda de Amazon funciona únicamente en entorno local. Usa Falabella para monitorear tus productos.',
+    searchResults: 'Resultados de búsqueda',
   },
   en: {
-    heroTitle: 'Track any price.', heroAccent: 'Buy at the right moment.',
-    heroSub: "Search a product on Falabella or Amazon, add it to monitoring and we'll alert you when it drops below your target.",
+    badge: 'Automatic updates every 6 hours',
+    heroTitle: "Track prices across the",
+    heroAccent: "world's biggest stores.",
+    heroSub: "Stop overpaying. Get instant alerts when the products you love hit their lowest price ever.",
     placeholder: 'Search a product… e.g. "laptop", "iPhone 15", "headphones"',
-    results: 'results', monitor: 'Monitor', monitoring: 'Monitoring',
-    view: 'View', suggested: 'Popular searches', searching: 'Searching…',
-    loadingMore: 'Loading more…', loadMore: 'Load more results',
-    error: 'Search error. Please try again.', noResults: 'No results. Try a different term.',
-    blockedAmazon: 'Amazon blocks searches from cloud servers. Works in local environment.',
+    trackNow: 'Track Now',
+    searching: 'Searching…',
+    suggested: 'Popular searches',
+    items: 'items',
+    monitor: 'Save to Watchlist',
+    monitoring: 'In Watchlist',
+    loadMore: 'Load more results',
+    loadingMore: 'Loading…',
+    noResults: 'No results. Try a different term.',
+    error: 'Search error. Please try again.',
+    amazonTitle: 'Amazon unavailable in production',
+    amazonMsg: 'Amazon blocks automated scraping from cloud servers. Amazon search only works in a local environment. Use Falabella to monitor your products.',
+    searchResults: 'Search Results',
   },
 };
 
-const SUGGESTIONS = ['Laptop', 'iPhone', 'AirPods', 'Monitor', 'SSD', 'Teclado mecánico'];
-
-function ResultRow({ item, lang, isMonitored, onToggle, saving }) {
+function ProductCard({ item, isMonitored, onToggle, saving, lang }) {
   const t = T[lang];
-  const currency = item.source === 'amazon' ? 'USD' : 'PEN';
+  const currency = item.source === 'falabella' ? 'PEN' : 'USD';
+  const hue = thumbHue(item.name);
+
   return (
-    <div className="pt-result">
-      <Thumb name={item.name} size={64} />
-      <div className="pt-result-main">
-        <div className="pt-result-tags">
-          <PlatformTag platform={item.source} size="sm" />
+    <div className="group bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden hover:shadow-md transition-all duration-300 flex flex-col">
+      {/* Image placeholder */}
+      <div
+        className="relative h-48 flex items-center justify-center overflow-hidden"
+        style={{ background: `linear-gradient(150deg, hsl(${hue} 30% 94%), hsl(${hue} 25% 90%))` }}
+      >
+        <span
+          className="text-5xl font-bold select-none"
+          style={{ color: `hsl(${hue} 40% 72%)` }}
+        >
+          {item.name.trim()[0]?.toUpperCase()}
+        </span>
+        {/* Platform badge */}
+        <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-outline-variant text-on-surface-variant">
+          {item.source === 'falabella' ? 'Falabella' : 'Amazon'}
         </div>
-        <div className="pt-result-name">{item.name}</div>
       </div>
-      <div className="pt-result-price">
-        <div className="pt-price-now">{money(item.price, currency)}</div>
-      </div>
-      <div className="pt-result-actions">
-        <Button
-          variant={isMonitored ? 'success-ghost' : 'primary'}
-          size="sm"
-          icon={isMonitored ? 'check' : 'bell'}
+
+      {/* Info */}
+      <div className="p-4 flex flex-col gap-3 flex-1">
+        <div className="flex justify-between items-start gap-2">
+          <h3 className="text-sm font-semibold text-on-surface leading-snug line-clamp-2 flex-1">
+            {item.name}
+          </h3>
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noreferrer"
+            className="text-outline hover:text-secondary transition-colors flex-none mt-0.5"
+          >
+            <Icon name="external" size={15} />
+          </a>
+        </div>
+
+        <p className="text-2xl font-bold text-on-surface font-mono">
+          {money(item.price, currency)}
+        </p>
+
+        <button
           onClick={() => !isMonitored && onToggle(item)}
           disabled={saving || isMonitored}
+          className={`mt-auto w-full py-2 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-all ${
+            isMonitored
+              ? 'bg-primary/10 text-primary cursor-default'
+              : 'bg-primary text-on-primary hover:opacity-90 active:scale-95'
+          } disabled:opacity-60`}
         >
+          <Icon name={isMonitored ? 'check' : 'bookmark'} size={16} />
           {saving ? '…' : isMonitored ? t.monitoring : t.monitor}
-        </Button>
-        <Button variant="ghost" size="sm" icon="external" href={item.url} target="_blank">{t.view}</Button>
+        </button>
       </div>
     </div>
   );
@@ -77,20 +123,30 @@ export default function Search({ lang, monitoredUrls, onAdded }) {
   const [saving, setSaving] = useState({});
   const inputRef = useRef(null);
 
-  const hasQuery = query.trim().length > 0;
+  const hasResults = results.length > 0;
+  const showHero = !hasResults && !loading && !error && query.trim() === '';
   const canLoadMore = results.length >= limit && limit < MAX_LIMIT;
 
   async function doSearch(q, plat, lim = STEP) {
     if (!q.trim()) return;
-    setLoading(true); setError(''); setResults([]); setLimit(lim);
+    const activePlatform = plat ?? platform;
+
+    if (activePlatform === 'amazon') {
+      setResults([]);
+      setError('amazon-blocked');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setResults([]);
+    setLimit(lim);
     try {
-      const fn = (plat || platform) === 'amazon' ? searchAmazon : searchFalabella;
-      const data = await fn(q, lim);
+      const data = await searchFalabella(q, lim);
       setResults(data);
       if (!data.length) setError(t.noResults);
-    } catch (err) {
-      const isBlocked = err?.response?.data?.blocked || err?.response?.status === 503;
-      setError(isBlocked && (plat || platform) === 'amazon' ? t.blockedAmazon : t.error);
+    } catch {
+      setError(t.error);
     }
     setLoading(false);
   }
@@ -99,16 +155,41 @@ export default function Search({ lang, monitoredUrls, onAdded }) {
     const newLimit = limit + STEP;
     setLoadingMore(true);
     try {
-      const fn = platform === 'amazon' ? searchAmazon : searchFalabella;
-      const data = await fn(query, newLimit);
+      const data = await searchFalabella(query, newLimit);
       setResults(data);
       setLimit(newLimit);
     } catch { /* silencioso */ }
     setLoadingMore(false);
   }
 
-  function handleSubmit(e) { e.preventDefault(); doSearch(query); }
-  function pickSuggestion(s) { setQuery(s); doSearch(s); }
+  function handleSubmit(e) {
+    e.preventDefault();
+    doSearch(query);
+  }
+
+  function pickSuggestion(s) {
+    setQuery(s);
+    doSearch(s);
+  }
+
+  function handleClear() {
+    setQuery('');
+    setResults([]);
+    setError('');
+    setLimit(STEP);
+    inputRef.current?.focus();
+  }
+
+  function switchPlatform(k) {
+    setPlatform(k);
+    if (query.trim()) {
+      doSearch(query, k);
+    } else if (k === 'amazon') {
+      setError('amazon-blocked');
+    } else {
+      setError('');
+    }
+  }
 
   async function handleToggle(item) {
     setSaving(s => ({ ...s, [item.url]: true }));
@@ -120,74 +201,135 @@ export default function Search({ lang, monitoredUrls, onAdded }) {
     setSaving(s => ({ ...s, [item.url]: false }));
   }
 
-  function handleClear() {
-    setQuery(''); setResults([]); setError(''); setLimit(STEP);
-    inputRef.current?.focus();
-  }
-
   return (
-    <div className="pt-search-view">
-      {!hasQuery && (
-        <div className="pt-hero">
-          <div className="pt-hero-badge"><Icon name="sparkle" size={14} /> {lang === 'en' ? 'Real-time price tracking' : 'Seguimiento de precios en tiempo real'}</div>
-          <h1 className="pt-hero-title">{t.heroTitle}<br /><span className="pt-grad">{t.heroAccent}</span></h1>
-          <p className="pt-hero-sub">{t.heroSub}</p>
-        </div>
+    <div>
+      {/* Hero */}
+      {showHero && (
+        <section className="text-center pt-10 pb-8 max-w-3xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full mb-8 text-xs font-semibold">
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>update</span>
+            {t.badge}
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-on-surface mb-4 leading-tight tracking-tight">
+            {t.heroTitle}<br />
+            <span className="text-primary">{t.heroAccent}</span>
+          </h1>
+          <p className="text-on-surface-variant text-lg mb-10 max-w-xl mx-auto leading-relaxed">
+            {t.heroSub}
+          </p>
+        </section>
       )}
 
-      <div className={`pt-searchbar-wrap${hasQuery ? ' compact' : ''}`}>
-        <form style={{ width: '100%' }} onSubmit={handleSubmit}>
-          <div className="pt-searchbar">
-            <Icon name="search" size={22} className="pt-search-icon" />
+      {/* Search bar */}
+      <div className={showHero ? 'max-w-2xl mx-auto mb-8' : 'mb-6'}>
+        <form onSubmit={handleSubmit}>
+          <div className="relative flex items-center bg-surface border border-outline-variant rounded-xl p-2 shadow-sm focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 transition-all">
+            <span className="material-symbols-outlined text-outline ml-3" style={{ fontSize: 22 }}>search</span>
             <input
               ref={inputRef}
-              className="pt-search-input"
+              type="text"
               placeholder={t.placeholder}
               value={query}
               onChange={e => setQuery(e.target.value)}
+              className="flex-1 bg-transparent border-none outline-none px-4 py-3 text-on-surface placeholder:text-on-surface-variant text-base"
             />
             {query && (
-              <button type="button" className="pt-search-clear" onClick={handleClear}>
+              <button
+                type="button"
+                onClick={handleClear}
+                className="text-outline hover:text-on-surface mr-2 transition-colors"
+              >
                 <Icon name="close" size={16} />
               </button>
             )}
-            <button type="submit" className="pt-btn pt-btn-md pt-btn-primary" disabled={loading || !query.trim()}>
-              {loading ? t.searching : <Icon name="search" size={17} />}
+            <button
+              type="submit"
+              disabled={loading || !query.trim()}
+              className="bg-primary text-on-primary px-6 py-3 rounded-lg font-bold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 whitespace-nowrap"
+            >
+              {loading ? t.searching : t.trackNow}
             </button>
           </div>
         </form>
 
-        <div className="pt-platform-toggle">
-          {[{ k: 'falabella', l: 'Falabella' }, { k: 'amazon', l: 'Amazon' }].map(o => (
-            <button key={o.k} className={`pt-plat plat-${o.k}${platform === o.k ? ' is-active' : ''}`}
-              onClick={() => { setPlatform(o.k); if (hasQuery) doSearch(query, o.k); }}>
-              <span className="pt-plat-dot" />{o.l}
+        {/* Platform toggle */}
+        <div className="flex items-center gap-2 mt-3">
+          {[
+            { k: 'falabella', label: 'Falabella', color: '#006c49' },
+            { k: 'amazon',    label: 'Amazon',    color: '#ba1a1a' },
+          ].map(o => (
+            <button
+              key={o.k}
+              onClick={() => switchPlatform(o.k)}
+              className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold border transition-all ${
+                platform === o.k
+                  ? o.k === 'amazon'
+                    ? 'bg-red-50 border-red-200 text-red-700'
+                    : 'bg-primary/10 border-primary/30 text-primary'
+                  : 'bg-surface border-outline-variant text-on-surface-variant hover:border-outline'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full flex-none" style={{ background: o.color }} />
+              {o.label}
+              {o.k === 'amazon' && (
+                <span className="text-[10px] font-normal text-red-500/80 ml-0.5">
+                  ({lang === 'en' ? 'blocked' : 'bloqueado'})
+                </span>
+              )}
             </button>
           ))}
         </div>
       </div>
 
-      {!hasQuery && !loading && (
-        <div className="pt-suggested">
-          <span className="pt-suggested-label">{t.suggested}</span>
-          <div className="pt-chips">
-            {SUGGESTIONS.map(s => (
-              <button key={s} className="pt-chip" onClick={() => pickSuggestion(s)}>{s}</button>
-            ))}
+      {/* Popular suggestions */}
+      {showHero && (
+        <div className="max-w-2xl mx-auto text-center">
+          <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mr-3">
+            {t.suggested}:
+          </span>
+          {SUGGESTIONS.map(s => (
+            <button
+              key={s}
+              onClick={() => pickSuggestion(s)}
+              className="inline-block m-1 px-4 py-1.5 bg-surface-container rounded-full text-sm font-medium text-secondary hover:bg-secondary-container hover:text-on-secondary-container transition-all"
+            >
+              #{s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Amazon blocked banner */}
+      {error === 'amazon-blocked' && (
+        <div className="mt-4 p-5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-4">
+          <span className="material-symbols-outlined text-red-600 mt-0.5 flex-none" style={{ fontSize: 24 }}>block</span>
+          <div>
+            <p className="text-sm font-bold text-red-700">{t.amazonTitle}</p>
+            <p className="text-sm text-red-600/80 mt-1 leading-relaxed">{t.amazonMsg}</p>
           </div>
         </div>
       )}
 
-      {error && <p style={{ color: 'var(--up)', fontSize: 14, margin: '16px 0' }}>{error}</p>}
+      {/* Generic error */}
+      {error && error !== 'amazon-blocked' && (
+        <p className="text-error text-sm mt-4 font-medium">{error}</p>
+      )}
 
-      {results.length > 0 && (
-        <div className="pt-results">
-          <div className="pt-results-head">
-            <span><b>{results.length}</b> {t.results} · "{query}"</span>
+      {/* Results */}
+      {hasResults && (
+        <div>
+          <div className="flex items-end justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-on-surface">{t.searchResults}</h2>
+              <p className="text-on-surface-variant text-sm mt-1">
+                {results.length} {t.items} · "{query}"
+              </p>
+            </div>
           </div>
-          <div className="pt-results-list">
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {results.map((item, i) => (
-              <ResultRow
+              <ProductCard
                 key={item.url || i}
                 item={item}
                 lang={lang}
@@ -197,16 +339,24 @@ export default function Search({ lang, monitoredUrls, onAdded }) {
               />
             ))}
           </div>
+
           {canLoadMore && (
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
-              <Button variant="ghost" icon="plus" onClick={handleLoadMore} disabled={loadingMore}>
+            <div className="mt-8 flex justify-center">
+              <button
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="px-8 py-2.5 border border-outline-variant rounded-lg text-secondary font-semibold hover:bg-surface-container-low transition-all disabled:opacity-50"
+              >
                 {loadingMore ? t.loadingMore : t.loadMore}
-              </Button>
+              </button>
             </div>
           )}
+
           {limit >= MAX_LIMIT && results.length >= MAX_LIMIT && (
-            <p style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 13, marginTop: 12 }}>
-              {lang === 'en' ? 'Showing maximum results. Refine your search for more specific results.' : 'Mostrando el máximo de resultados. Refina tu búsqueda para resultados más específicos.'}
+            <p className="text-center text-on-surface-variant text-xs mt-4">
+              {lang === 'en'
+                ? 'Showing maximum results. Refine your search for more specific results.'
+                : 'Mostrando el máximo de resultados. Refina tu búsqueda para obtener resultados más específicos.'}
             </p>
           )}
         </div>

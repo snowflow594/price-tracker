@@ -13,7 +13,7 @@ Dashboard de monitoreo de precios en tiempo real para productos de **Falabella.c
 - **Gráfico de historial** SVG interactivo con rangos de 7, 30 y 90 días
 - **Precio objetivo** — define un target y la app te notifica cuando el precio lo alcanza
 - **Alertas** por notificación del navegador (Web Notifications API) y por email (Gmail SMTP)
-- **Actualización automática** de precios cada 6 horas via cron job en el servidor
+- **Actualización automática** de precios cada 6 horas via GitHub Actions (cron schedule)
 - **Soporte bilingüe** español / inglés
 - **Dark theme** con design system propio (sin librerías de UI externas)
 
@@ -27,7 +27,7 @@ Dashboard de monitoreo de precios en tiempo real para productos de **Falabella.c
 | Backend | Node.js + Express 5 |
 | Base de datos | PostgreSQL |
 | Scraping | Puppeteer 25 + puppeteer-extra-plugin-stealth |
-| Automatización | node-cron (cada 6 horas) |
+| Automatización | GitHub Actions (cron schedule cada 6 horas) |
 | Email | Nodemailer + Gmail SMTP |
 | Deploy | Vercel (frontend) + Railway (backend + DB) |
 
@@ -49,12 +49,12 @@ Express API (Railway)
     ├── DELETE /api/products/:id    ──▶  PostgreSQL
     ├── PATCH  /api/products/:id/target
     ├── GET  /api/products/:id/history
-    └── POST /api/jobs/update-prices
-              │
-              ▼
-        node-cron (cada 6h)
+    └── POST /api/jobs/update-prices  (disparo manual)
+
+GitHub Actions (cron cada 6h)
+    └── node src/jobs/run-price-update.js
         └── getProductPrice(url) por cada producto monitorado
-            └── si precio ≤ target → Web Notification + email
+            └── si precio ≤ target → email (Nodemailer + Gmail SMTP)
 ```
 
 ---
@@ -81,7 +81,8 @@ price-tracker/
 │   │   │   ├── init.sql           # Schema: products + price_history
 │   │   │   └── migrate.js         # Corre init.sql + ALTER TABLE si faltan columnas
 │   │   └── jobs/
-│   │       └── priceUpdater.js    # Cron cada 6h: actualiza precios + dispara alertas
+│   │       ├── priceUpdater.js    # Lógica de actualización: scraping + alertas por email
+│   │       └── run-price-update.js # Entry point para GitHub Actions (node src/jobs/run-price-update.js)
 │   ├── nixpacks.toml              # Instala Chromium en Railway (Nix packages)
 │   └── package.json
 └── frontend/
@@ -185,8 +186,7 @@ npm run dev
 Deberías ver:
 
 ```
-Migración completada.
-Cron job de precios iniciado (cada 6 horas).
+Base de datos lista.
 Servidor corriendo en http://localhost:3001
 ```
 
@@ -291,6 +291,19 @@ El proyecto está desplegado con **Railway** (backend + PostgreSQL) y **Vercel**
 
 4. Railway detecta `nixpacks.toml` y instala Chromium automáticamente en el entorno Linux
 
+### GitHub Actions (actualizador de precios)
+
+El cron job de actualización de precios corre en GitHub Actions, no en el servidor. Configura los siguientes **Secrets** en tu repositorio (`Settings → Secrets and variables → Actions`):
+
+| Secret | Descripción |
+|---|---|
+| `DATABASE_URL` | URL de conexión PostgreSQL de Railway (formato `postgresql://user:pass@host:port/db`) |
+| `GMAIL_USER` | Cuenta Gmail para enviar alertas |
+| `GMAIL_APP_PASSWORD` | Contraseña de aplicación de Gmail |
+| `ALERT_EMAIL` | Email donde llegan las alertas de precio |
+
+El workflow (`.github/workflows/update-prices.yml`) se ejecuta automáticamente cada 6 horas y también puede dispararse manualmente desde la pestaña **Actions** del repositorio.
+
 ### Vercel (frontend)
 
 1. Importa el repositorio en [vercel.com](https://vercel.com)
@@ -312,7 +325,8 @@ El proyecto está desplegado con **Railway** (backend + PostgreSQL) y **Vercel**
 - **Precios y descuentos:** Falabella muestra precios diferenciados (precio Internet, precio CMR con tarjeta). El scraper toma el primer precio numérico visible, que corresponde al precio estándar online sin tarjeta.
 - **Chromium en Railway:** se instala via `nixpacks.toml` usando Nix packages. La ruta se detecta en runtime con `which chromium` sin necesidad de configurar variables adicionales.
 - **Migraciones automáticas:** al arrancar, el servidor corre `init.sql` y aplica `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` para que la base de datos siempre esté al día sin intervención manual.
-- **Targets en PostgreSQL:** los precios objetivo se almacenan en la DB (no en localStorage) para que el cron job del servidor pueda evaluar y enviar alertas por email sin depender del navegador.
+- **Cron en GitHub Actions:** la actualización periódica de precios no corre en Railway sino en GitHub Actions. El servidor Railway es exclusivamente un API REST, sin procesos en background. Esto evita que Railway entre en modo sleep por inactividad y que el plan gratuito se agote por el consumo del scraper.
+- **Targets en PostgreSQL:** los precios objetivo se almacenan en la DB (no en localStorage) para que GitHub Actions pueda evaluar y enviar alertas por email sin depender del navegador.
 
 ---
 
