@@ -1,6 +1,6 @@
 # Price Tracker
 
-Dashboard de monitoreo de precios en tiempo real para productos de **Falabella.com.pe** y **Amazon.com**. Busca productos, agrégalos al monitoreo, define un precio objetivo y recibe una alerta cuando el precio baje.
+Dashboard de monitoreo de precios para productos de **Falabella.com.pe**. Busca productos, agrégalos al watchlist, define un precio objetivo y recibe una alerta por email cuando el precio baje.
 
 **Demo en producción:** [price-tracker-pearl-iota.vercel.app](https://price-tracker-pearl-iota.vercel.app)
 
@@ -8,14 +8,15 @@ Dashboard de monitoreo de precios en tiempo real para productos de **Falabella.c
 
 ## Características
 
-- **Búsqueda en tiempo real** en Falabella y Amazon con hasta 30 resultados paginados
+- **Autenticación multi-usuario** — registro e inicio de sesión con JWT. Cada usuario tiene su propio watchlist aislado
+- **Búsqueda en tiempo real** en Falabella con hasta 30 resultados paginados
 - **Monitoreo de productos** — agrega cualquier producto y rastrea su historial de precios
 - **Gráfico de historial** SVG interactivo con rangos de 7, 30 y 90 días
 - **Precio objetivo** — define un target y la app te notifica cuando el precio lo alcanza
-- **Alertas** por notificación del navegador (Web Notifications API) y por email (Gmail SMTP)
-- **Actualización automática** de precios cada 6 horas via GitHub Actions (cron schedule)
+- **Alertas por email** enviadas al correo de cada usuario via Resend
+- **Actualización automática** de precios cada 6 horas via GitHub Actions
 - **Soporte bilingüe** español / inglés
-- **Dark theme** con design system propio (sin librerías de UI externas)
+- **Dark theme** con design system propio basado en Material Design 3
 
 ---
 
@@ -23,12 +24,13 @@ Dashboard de monitoreo de precios en tiempo real para productos de **Falabella.c
 
 | Capa | Tecnología |
 |---|---|
-| Frontend | React 19 + Vite 8 |
-| Backend | Node.js + Express 5 |
+| Frontend | React 19 + Vite 6 + Tailwind CSS v4 |
+| Backend | Node.js 24 + Express 5 |
 | Base de datos | PostgreSQL |
-| Scraping | Puppeteer 25 + puppeteer-extra-plugin-stealth |
+| Autenticación | JWT + bcrypt |
+| Scraping | Puppeteer 24 + puppeteer-extra-plugin-stealth |
 | Automatización | GitHub Actions (cron schedule cada 6 horas) |
-| Email | Nodemailer + Gmail SMTP |
+| Email | Resend API |
 | Deploy | Vercel (frontend) + Railway (backend + DB) |
 
 ---
@@ -38,23 +40,26 @@ Dashboard de monitoreo de precios en tiempo real para productos de **Falabella.c
 ```
 Browser (React)
     │
-    │ HTTPS
+    │ HTTPS + JWT Bearer Token
     ▼
 Express API (Railway)
     │
+    ├── POST /api/auth/register     ──▶  Crea usuario (bcrypt + JWT)
+    ├── POST /api/auth/login        ──▶  Autentica usuario (bcrypt + JWT)
+    │
     ├── GET  /api/falabella/search  ──▶  Puppeteer → Falabella.com.pe
-    ├── GET  /api/amazon/search     ──▶  Puppeteer → Amazon.com
-    ├── GET  /api/products          ──▶  PostgreSQL
-    ├── POST /api/products          ──▶  PostgreSQL
-    ├── DELETE /api/products/:id    ──▶  PostgreSQL
-    ├── PATCH  /api/products/:id/target
-    ├── GET  /api/products/:id/history
-    └── POST /api/jobs/update-prices  (disparo manual)
+    │
+    ├── GET    /api/products              ──▶  PostgreSQL (solo productos del usuario)
+    ├── POST   /api/products              ──▶  PostgreSQL
+    ├── DELETE /api/products/:id          ──▶  PostgreSQL
+    ├── PATCH  /api/products/:id/target   ──▶  PostgreSQL
+    ├── GET    /api/products/:id/history  ──▶  PostgreSQL
+    └── POST   /api/jobs/update-prices    ──▶  Disparo manual (requiere auth)
 
 GitHub Actions (cron cada 6h)
     └── node src/jobs/run-price-update.js
-        └── getProductPrice(url) por cada producto monitorado
-            └── si precio ≤ target → email (Nodemailer + Gmail SMTP)
+        └── getProductPrice(url) por cada producto
+            └── si precio ≤ target → email via Resend al dueño del producto
 ```
 
 ---
@@ -65,65 +70,67 @@ GitHub Actions (cron cada 6h)
 price-tracker/
 ├── backend/
 │   ├── src/
-│   │   ├── app.js                 # Entry point, monta rutas, corre migración al arrancar
+│   │   ├── app.js                    # Entry point, monta rutas, corre migración al arrancar
+│   │   ├── middleware/
+│   │   │   └── auth.js               # Middleware JWT (verifyToken)
 │   │   ├── routes/
-│   │   │   ├── products.js        # CRUD de productos + historial
-│   │   │   ├── falabella.js       # GET /api/falabella/search
-│   │   │   └── amazon.js          # GET /api/amazon/search
+│   │   │   ├── auth.js               # POST /register, POST /login
+│   │   │   ├── products.js           # CRUD de productos + historial (requiere auth)
+│   │   │   ├── falabella.js          # GET /api/falabella/search
+│   │   │   └── amazon.js             # GET /api/amazon/search
 │   │   ├── scrapers/
-│   │   │   ├── browserHelper.js   # Lanzador Puppeteer compartido (detecta Chrome en Windows/Linux)
-│   │   │   ├── falabella.js       # searchProducts + getProductPrice para Falabella
-│   │   │   └── amazon.js          # searchProducts + getProductPrice para Amazon
+│   │   │   ├── browserHelper.js      # Lanzador Puppeteer (detecta Chrome en Windows/Linux)
+│   │   │   ├── falabella.js          # searchProducts + getProductPrice para Falabella
+│   │   │   └── amazon.js             # searchProducts + getProductPrice para Amazon
 │   │   ├── services/
-│   │   │   └── mailer.js          # sendPriceAlert via Nodemailer + Gmail SMTP
+│   │   │   └── mailer.js             # sendPriceAlert via Resend API
 │   │   ├── db/
-│   │   │   ├── pool.js            # Conexión PostgreSQL (DATABASE_URL o vars individuales)
-│   │   │   ├── init.sql           # Schema: products + price_history
-│   │   │   └── migrate.js         # Corre init.sql + ALTER TABLE si faltan columnas
+│   │   │   ├── pool.js               # Conexión PostgreSQL (DATABASE_URL o vars individuales)
+│   │   │   ├── init.sql              # Schema: users + products + price_history
+│   │   │   └── migrate.js            # Corre init.sql al arrancar
 │   │   └── jobs/
-│   │       ├── priceUpdater.js    # Lógica de actualización: scraping + alertas por email
-│   │       └── run-price-update.js # Entry point para GitHub Actions (node src/jobs/run-price-update.js)
-│   ├── nixpacks.toml              # Instala Chromium en Railway (Nix packages)
+│   │       ├── priceUpdater.js       # Scraping + alertas por email (JOIN con users)
+│   │       └── run-price-update.js   # Entry point para GitHub Actions
+│   ├── nixpacks.toml                 # Instala Chromium en Railway (Nix packages)
 │   └── package.json
-└── frontend/
-    ├── src/
-    │   ├── App.jsx                # Router, estado global (lang, toast, alertCount)
-    │   ├── App.css                # Design system: tokens, componentes, dark theme
-    │   ├── pages/
-    │   │   ├── Search.jsx         # Búsqueda + resultados + paginación
-    │   │   └── Dashboard.jsx      # Lista de productos monitoreados + gráfico + target
-    │   ├── components/
-    │   │   ├── Button.jsx
-    │   │   ├── Icon.jsx
-    │   │   ├── Logo.jsx
-    │   │   ├── PlatformTag.jsx
-    │   │   ├── PriceChart.jsx     # Gráfico SVG de historial de precios
-    │   │   └── Thumb.jsx          # Avatar generado desde el nombre del producto
-    │   ├── services/
-    │   │   └── api.js             # Todas las llamadas HTTP con Axios
-    │   └── utils/
-    │       └── format.js          # money(), fmtDate()
-    └── package.json
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx                   # Router, navbar, toast, modals de footer
+│   │   ├── App.css                   # Componentes globales (modals, toasts, chart)
+│   │   ├── context/
+│   │   │   └── AuthContext.jsx       # Estado global de autenticación
+│   │   ├── pages/
+│   │   │   ├── Login.jsx             # Formulario de inicio de sesión
+│   │   │   ├── Register.jsx          # Formulario de registro
+│   │   │   ├── Search.jsx            # Búsqueda + resultados + paginación
+│   │   │   └── Dashboard.jsx         # Watchlist + gráfico + precio objetivo
+│   │   ├── components/
+│   │   │   ├── Icon.jsx
+│   │   │   ├── PriceChart.jsx        # Gráfico SVG de historial de precios
+│   │   │   └── Sparkline.jsx         # Mini gráfico de tendencia 7D
+│   │   ├── services/
+│   │   │   └── api.js                # Todas las llamadas HTTP con Axios + interceptor JWT
+│   │   └── utils/
+│   │       └── format.js             # money(), fmtDate(), thumbHue()
+│   └── package.json
+└── docs/
+    └── diagnostico.md                # Diagnóstico técnico del proyecto
 ```
 
 ---
 
-## Instalación local (paso a paso)
+## Instalación local
 
 ### Requisitos previos
 
-- **Node.js 20+** — [nodejs.org](https://nodejs.org)
+- **Node.js 24+** — [nodejs.org](https://nodejs.org)
 - **PostgreSQL 14+** — [postgresql.org](https://www.postgresql.org/download)
 - **Google Chrome** instalado (Windows) — los scrapers lo detectan automáticamente. En Linux se usa Chromium del sistema.
 
-Verifica que tienes todo instalado:
-
 ```bash
-node -v        # v20.x o superior
+node -v        # v24.x o superior
 psql --version # PostgreSQL 14.x o superior
 ```
-
----
 
 ### 1. Clonar el repositorio
 
@@ -132,11 +139,7 @@ git clone https://github.com/snowflow594/price-tracker.git
 cd price-tracker
 ```
 
----
-
 ### 2. Configurar la base de datos
-
-Abre `psql` y crea la base de datos:
 
 ```bash
 psql -U postgres
@@ -147,9 +150,7 @@ CREATE DATABASE price_tracker;
 \q
 ```
 
-> Las tablas se crean **automáticamente** la primera vez que arranca el servidor, no necesitas correr ningún SQL manualmente.
-
----
+> Las tablas se crean automáticamente la primera vez que arranca el servidor.
 
 ### 3. Configurar el backend
 
@@ -158,7 +159,7 @@ cd backend
 npm install
 ```
 
-Crea el archivo `backend/.env` con el siguiente contenido (ajusta los valores a tu entorno):
+Crea el archivo `backend/.env`:
 
 ```env
 # Base de datos
@@ -171,33 +172,20 @@ DB_PASSWORD=tu_password_de_postgres
 # Servidor
 PORT=3001
 
-# Alertas por email (opcional — ver sección "Alertas por email")
-GMAIL_USER=tu_cuenta@gmail.com
-GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
-ALERT_EMAIL=destino@gmail.com
-```
+# Autenticación
+JWT_SECRET=una_cadena_larga_y_aleatoria
 
-Inicia el servidor en modo desarrollo:
+# Alertas por email (Resend)
+RESEND_API_KEY=re_xxxxxxxxxxxx
+```
 
 ```bash
 npm run dev
 ```
 
-Deberías ver:
-
-```
-Base de datos lista.
-Servidor corriendo en http://localhost:3001
-```
-
-Puedes verificar que el servidor está funcionando abriendo:
-[http://localhost:3001/health](http://localhost:3001/health)
-
----
+Verifica que el servidor está funcionando: [http://localhost:3001/health](http://localhost:3001/health)
 
 ### 4. Configurar el frontend
-
-En una **nueva terminal**:
 
 ```bash
 cd frontend
@@ -205,104 +193,80 @@ npm install
 npm run dev
 ```
 
-Abre [http://localhost:5173](http://localhost:5173) en tu navegador.
+Abre [http://localhost:5173](http://localhost:5173).
 
-> Por defecto el frontend apunta a `http://localhost:3001`. Si cambiaste el puerto del backend, crea `frontend/.env.local` con:
+> Si cambiaste el puerto del backend, crea `frontend/.env.local` con:
 > ```
 > VITE_API_URL=http://localhost:PUERTO
 > ```
 
 ---
 
-### 5. Uso básico
-
-1. **Buscar** — escribe el nombre de un producto en el buscador y selecciona Falabella o Amazon
-2. **Monitorear** — haz clic en "Monitorear" en cualquier resultado para agregarlo al dashboard
-3. **Ver historial** — en "Mis Productos", haz clic en un producto para ver su gráfico de precios
-4. **Precio objetivo** — escribe un precio objetivo en el campo correspondiente y guárdalo
-5. **Actualizar precios** — usa el botón "Actualizar precios" para forzar una actualización inmediata (el cron lo hace automáticamente cada 6 horas)
-
----
-
 ## Alertas por email
 
-Las alertas por email requieren una **Contraseña de aplicación de Gmail** (no tu contraseña normal).
+Las alertas se envían via **Resend** al email del usuario registrado, cuando el precio de un producto cae por debajo de su precio objetivo.
 
-### Cómo obtener la contraseña de aplicación
+### Configuración
 
-1. Activa la [verificación en dos pasos](https://myaccount.google.com/signinoptions/two-step-verification) en tu cuenta Google
-2. Ve a [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
-3. Selecciona "Otra (nombre personalizado)" → escribe "Price Tracker" → genera
-4. Copia las 16 letras generadas y pégalas en `GMAIL_APP_PASSWORD` del `.env`
+1. Crea una cuenta gratuita en [resend.com](https://resend.com) (3,000 emails/mes gratis)
+2. Ve a **API Keys** → **Create API Key**
+3. Agrega la clave en `.env` como `RESEND_API_KEY=re_...`
+4. En producción, agrega la misma variable en Railway
 
-> **Nota:** Si tu cuenta tiene Google Advanced Protection activada, las contraseñas de aplicación no están disponibles. En ese caso las alertas del navegador siguen funcionando normalmente.
-
-### Alertas del navegador
-
-El navegador pedirá permiso la primera vez que haya un producto con precio igual o menor al objetivo. Una vez concedido el permiso, las notificaciones aparecen aunque la pestaña esté en segundo plano.
+> En el plan gratuito sin dominio verificado, los emails salen desde `onboarding@resend.dev`. Para usar tu propio dominio como remitente, verifica un dominio en el dashboard de Resend.
 
 ---
 
 ## API REST
 
+Todos los endpoints excepto `/health`, `/api/auth/login` y `/api/auth/register` requieren el header:
+```
+Authorization: Bearer <token>
+```
+
 | Método | Endpoint | Descripción |
 |---|---|---|
 | `GET` | `/health` | Estado del servidor y conexión a DB |
+| `POST` | `/api/auth/register` | Registra un nuevo usuario |
+| `POST` | `/api/auth/login` | Inicia sesión, retorna JWT |
 | `GET` | `/api/falabella/search?q=laptop&limit=10` | Busca en Falabella (máx. 30) |
-| `GET` | `/api/amazon/search?q=laptop&limit=10` | Busca en Amazon (máx. 30) |
-| `GET` | `/api/products` | Lista todos los productos monitoreados |
-| `POST` | `/api/products` | Agrega un producto al monitoreo |
+| `GET` | `/api/products` | Lista productos del usuario autenticado |
+| `POST` | `/api/products` | Agrega un producto al watchlist |
 | `DELETE` | `/api/products/:id` | Elimina un producto y su historial |
 | `PATCH` | `/api/products/:id/target` | Guarda el precio objetivo |
 | `GET` | `/api/products/:id/history` | Historial de precios de un producto |
 | `POST` | `/api/jobs/update-prices` | Dispara actualización manual de precios |
 
-### Ejemplo — agregar un producto
-
-```bash
-curl -X POST http://localhost:3001/api/products \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Laptop HP 15.6",
-    "url": "https://www.falabella.com.pe/falabella-pe/product/...",
-    "source": "falabella",
-    "initial_price": 1299,
-    "currency": "PEN"
-  }'
-```
-
 ---
 
 ## Deploy en producción
 
-El proyecto está desplegado con **Railway** (backend + PostgreSQL) y **Vercel** (frontend).
-
 ### Railway (backend)
 
 1. Crea un proyecto en [railway.app](https://railway.app) y conecta el repositorio
-2. Agrega un servicio **PostgreSQL** desde el panel de Railway — la variable `DATABASE_URL` se inyecta automáticamente
-3. Configura las variables de entorno del backend manualmente:
+2. Agrega un servicio **PostgreSQL** — la variable `DATABASE_URL` se inyecta automáticamente
+3. Configura las variables de entorno:
 
-   | Variable | Valor |
-   |---|---|
-   | `GMAIL_USER` | tu cuenta de Gmail |
-   | `GMAIL_APP_PASSWORD` | contraseña de aplicación |
-   | `ALERT_EMAIL` | email donde llegan las alertas |
+| Variable | Descripción |
+|---|---|
+| `JWT_SECRET` | Cadena secreta larga para firmar tokens |
+| `RESEND_API_KEY` | API key de Resend para emails |
+| `FRONTEND_URL` | URL de Vercel (para CORS) |
+| `DB_SSL_REJECT_UNAUTHORIZED` | `false` (Railway usa certificados self-signed) |
 
-4. Railway detecta `nixpacks.toml` y instala Chromium automáticamente en el entorno Linux
+4. Railway detecta `nixpacks.toml` e instala Chromium automáticamente
 
 ### GitHub Actions (actualizador de precios)
 
-El cron job de actualización de precios corre en GitHub Actions, no en el servidor. Configura los siguientes **Secrets** en tu repositorio (`Settings → Secrets and variables → Actions`):
+Configura los siguientes **Secrets** en `Settings → Secrets and variables → Actions`:
 
 | Secret | Descripción |
 |---|---|
-| `DATABASE_URL` | URL de conexión PostgreSQL de Railway (formato `postgresql://user:pass@host:port/db`) |
-| `GMAIL_USER` | Cuenta Gmail para enviar alertas |
-| `GMAIL_APP_PASSWORD` | Contraseña de aplicación de Gmail |
-| `ALERT_EMAIL` | Email donde llegan las alertas de precio |
+| `DATABASE_URL` | URL de conexión PostgreSQL de Railway |
+| `RESEND_API_KEY` | API key de Resend para alertas |
+| `DB_SSL_REJECT_UNAUTHORIZED` | `false` |
 
-El workflow (`.github/workflows/update-prices.yml`) se ejecuta automáticamente cada 6 horas y también puede dispararse manualmente desde la pestaña **Actions** del repositorio.
+El workflow corre automáticamente cada 6 horas y puede dispararse manualmente desde la pestaña **Actions**.
 
 ### Vercel (frontend)
 
@@ -310,23 +274,22 @@ El workflow (`.github/workflows/update-prices.yml`) se ejecuta automáticamente 
 2. Configura el **Root Directory** como `frontend`
 3. Agrega la variable de entorno:
 
-   | Variable | Valor |
-   |---|---|
-   | `VITE_API_URL` | `https://tu-app.up.railway.app` (con `https://`) |
-
-4. Vercel detecta Vite automáticamente y despliega en cada push a `main`
+| Variable | Valor |
+|---|---|
+| `VITE_API_URL` | `https://tu-app.up.railway.app` |
 
 ---
 
 ## Notas técnicas
 
-- **Amazon en producción:** Amazon bloquea búsquedas desde servidores cloud/datacenter. La búsqueda de Amazon funciona en entorno local pero devuelve error 503 en producción (Railway). Falabella funciona correctamente en ambos entornos.
-- **Mercado Libre fue descartado:** implementa un sistema antiBOT ("Anubis") con proof-of-work en JavaScript y fingerprinting del navegador que bloquea cualquier instancia de Chrome headless, incluso con el plugin stealth.
-- **Precios y descuentos:** Falabella muestra precios diferenciados (precio Internet, precio CMR con tarjeta). El scraper toma el primer precio numérico visible, que corresponde al precio estándar online sin tarjeta.
-- **Chromium en Railway:** se instala via `nixpacks.toml` usando Nix packages. La ruta se detecta en runtime con `which chromium` sin necesidad de configurar variables adicionales.
-- **Migraciones automáticas:** al arrancar, el servidor corre `init.sql` y aplica `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` para que la base de datos siempre esté al día sin intervención manual.
-- **Cron en GitHub Actions:** la actualización periódica de precios no corre en Railway sino en GitHub Actions. El servidor Railway es exclusivamente un API REST, sin procesos en background. Esto evita que Railway entre en modo sleep por inactividad y que el plan gratuito se agote por el consumo del scraper.
-- **Targets en PostgreSQL:** los precios objetivo se almacenan en la DB (no en localStorage) para que GitHub Actions pueda evaluar y enviar alertas por email sin depender del navegador.
+- **Amazon en producción:** Amazon bloquea búsquedas desde servidores cloud. La búsqueda de Amazon funciona en local pero no en Railway. Falabella funciona en ambos entornos.
+- **Mercado Libre:** implementa un sistema antiBOT con proof-of-work y fingerprinting que bloquea Chrome headless incluso con el plugin stealth.
+- **Chromium en Railway:** se instala via `nixpacks.toml` con Nix packages. La ruta se detecta en runtime con `which chromium`.
+- **Migraciones automáticas:** al arrancar, el servidor corre `init.sql` y aplica `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` para mantener el schema al día.
+- **Cron en GitHub Actions:** el actualizador de precios corre en GitHub Actions, no en Railway. El servidor es exclusivamente un API REST. Esto evita que Railway entre en modo sleep y que el plan gratuito se agote por el scraper.
+- **Alertas por usuario:** el cron hace JOIN con la tabla `users` para enviar cada alerta al email del dueño del producto, no a un email global de administrador.
+- **Rate limiting:** los endpoints de auth tienen límite de 10 intentos por 15 minutos para prevenir fuerza bruta.
+- **SMTP bloqueado en Railway:** Railway no permite conexiones SMTP salientes. Por eso se usa Resend (HTTP API) en lugar de Nodemailer.
 
 ---
 
