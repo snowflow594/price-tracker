@@ -24,8 +24,8 @@ async function sendPriceAlert({ to, productName, currentPrice, targetPrice, curr
   const [smtpIp] = await resolve4('smtp.gmail.com');
   const transporter = nodemailer.createTransport({
     host: smtpIp,
-    port: 587,
-    secure: false,
+    port: 465,
+    secure: true,
     tls: { servername: 'smtp.gmail.com' },
     auth: {
       user: process.env.GMAIL_USER,
