@@ -1,4 +1,6 @@
-require('dns').setDefaultResultOrder('ipv4first');
+const dns = require('dns');
+const { promisify } = require('util');
+const resolve4 = promisify(dns.resolve4);
 const nodemailer = require('nodemailer');
 
 function escapeHtml(str) {
@@ -18,18 +20,18 @@ function isSafeUrl(str) {
   }
 }
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  family: 4,
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-});
-
 async function sendPriceAlert({ to, productName, currentPrice, targetPrice, currency, url, source }) {
+  const [smtpIp] = await resolve4('smtp.gmail.com');
+  const transporter = nodemailer.createTransport({
+    host: smtpIp,
+    port: 587,
+    secure: false,
+    tls: { servername: 'smtp.gmail.com' },
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD.replace(/\s/g, ''),
+    },
+  });
   const symbol = currency === 'USD' ? '$' : 'S/';
   const platformLabel = source === 'amazon' ? 'Amazon' : source === 'falabella' ? 'Falabella' : escapeHtml(source);
   const safeProductName = escapeHtml(productName);
