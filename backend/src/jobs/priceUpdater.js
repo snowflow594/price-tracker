@@ -20,7 +20,7 @@ async function checkAndSendAlert(product, newPrice, currency) {
   const hoursSinceLast = sentAt ? (Date.now() - sentAt.getTime()) / 36e5 : Infinity;
   if (hoursSinceLast < 24) return;
 
-  const alertEmail = process.env.ALERT_EMAIL;
+  const alertEmail = product.user_email;
   if (!alertEmail) return;
 
   try {
@@ -43,9 +43,12 @@ async function checkAndSendAlert(product, newPrice, currency) {
 async function updateAllPrices() {
   console.log(`[${new Date().toISOString()}] Iniciando actualización de precios...`);
 
-  const { rows: products } = await pool.query(
-    'SELECT id, name, url, source, target_price, alert_sent_at FROM products'
-  );
+  const { rows: products } = await pool.query(`
+    SELECT p.id, p.name, p.url, p.source, p.target_price, p.alert_sent_at, u.email AS user_email
+    FROM products p
+    JOIN users u ON u.id = p.user_id
+    WHERE p.user_id IS NOT NULL
+  `);
 
   if (products.length === 0) {
     console.log('No hay productos registrados.');
