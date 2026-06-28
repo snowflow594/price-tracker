@@ -2,10 +2,19 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const pool = require('../db/pool');
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Demasiados intentos. Intenta de nuevo en 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // POST /api/auth/register
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
   if (password.length < 8) return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
@@ -27,12 +36,13 @@ router.post('/register', async (req, res) => {
     );
     res.status(201).json({ user: rows[0], token });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[auth/register]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
 // POST /api/auth/login
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
 
@@ -50,7 +60,8 @@ router.post('/login', async (req, res) => {
     );
     res.json({ user: { id: rows[0].id, email: rows[0].email, created_at: rows[0].created_at }, token });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[auth/login]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 

@@ -1,5 +1,22 @@
 const nodemailer = require('nodemailer');
 
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function isSafeUrl(str) {
+  try {
+    const u = new URL(str);
+    return u.protocol === 'https:' || u.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -10,7 +27,9 @@ const transporter = nodemailer.createTransport({
 
 async function sendPriceAlert({ to, productName, currentPrice, targetPrice, currency, url, source }) {
   const symbol = currency === 'USD' ? '$' : 'S/';
-  const platformLabel = source === 'amazon' ? 'Amazon' : source === 'falabella' ? 'Falabella' : source;
+  const platformLabel = source === 'amazon' ? 'Amazon' : source === 'falabella' ? 'Falabella' : escapeHtml(source);
+  const safeProductName = escapeHtml(productName);
+  const safeUrl = isSafeUrl(url) ? url : '#';
 
   const html = `
 <!DOCTYPE html>
@@ -28,7 +47,7 @@ async function sendPriceAlert({ to, productName, currentPrice, targetPrice, curr
       </p>
       <div style="background:#171F31;border-radius:12px;padding:20px;margin-bottom:20px;">
         <p style="margin:0 0 12px;color:#9AA5BE;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Producto</p>
-        <p style="margin:0;color:#EAEEF7;font-size:15px;font-weight:600;line-height:1.4;">${productName}</p>
+        <p style="margin:0;color:#EAEEF7;font-size:15px;font-weight:600;line-height:1.4;">${safeProductName}</p>
       </div>
       <div style="display:flex;gap:12px;margin-bottom:24px;">
         <div style="flex:1;background:#171F31;border-radius:12px;padding:16px;">
@@ -40,7 +59,7 @@ async function sendPriceAlert({ to, productName, currentPrice, targetPrice, curr
           <p style="margin:0;color:#EAEEF7;font-size:22px;font-weight:700;">${symbol} ${targetPrice.toLocaleString('es-PE')}</p>
         </div>
       </div>
-      <a href="${url}" style="display:block;background:linear-gradient(135deg,#3D7BFF,#7A5BFF);color:#fff;text-decoration:none;text-align:center;padding:14px 24px;border-radius:10px;font-size:15px;font-weight:700;">
+      <a href="${safeUrl}" style="display:block;background:linear-gradient(135deg,#3D7BFF,#7A5BFF);color:#fff;text-decoration:none;text-align:center;padding:14px 24px;border-radius:10px;font-size:15px;font-weight:700;">
         Ver en ${platformLabel} →
       </a>
     </div>

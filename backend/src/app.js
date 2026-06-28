@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 require('dotenv').config();
 
 const pool = require('./db/pool');
@@ -9,11 +10,24 @@ const productsRouter = require('./routes/products');
 const amazonRouter = require('./routes/amazon');
 const falabellaRouter = require('./routes/falabella');
 const authRouter = require('./routes/auth');
+const verifyToken = require('./middleware/auth');
 const { updateAllPrices } = require('./jobs/priceUpdater');
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+  'http://localhost:3000',
+].filter(Boolean);
+
+app.use(helmet());
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error('Not allowed by CORS'));
+  },
+}));
 app.use(express.json());
 
 app.use('/api/auth', authRouter);
@@ -21,8 +35,7 @@ app.use('/api/products', productsRouter);
 app.use('/api/amazon', amazonRouter);
 app.use('/api/falabella', falabellaRouter);
 
-// Disparo manual del cron (para testing)
-app.post('/api/jobs/update-prices', async (req, res) => {
+app.post('/api/jobs/update-prices', verifyToken, async (req, res) => {
   res.json({ message: 'Actualización iniciada en background.' });
   updateAllPrices().catch(console.error);
 });
@@ -31,8 +44,8 @@ app.get('/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
     res.json({ status: 'ok', db: 'connected' });
-  } catch (err) {
-    res.status(500).json({ status: 'error', db: err.message });
+  } catch {
+    res.status(500).json({ status: 'error', db: 'connection failed' });
   }
 });
 

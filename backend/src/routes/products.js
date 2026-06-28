@@ -15,7 +15,8 @@ router.get('/search', async (req, res) => {
     const results = await searchProducts(q);
     res.json(results);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[products]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -54,7 +55,8 @@ router.post('/', async (req, res) => {
 
     res.status(201).json(product);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[products]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -76,7 +78,8 @@ router.get('/', async (req, res) => {
     `, [req.user.id]);
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[products]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -92,7 +95,8 @@ router.patch('/:id/target', async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Producto no encontrado' });
     res.json(rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[products]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -109,7 +113,8 @@ router.delete('/:id', async (req, res) => {
     await pool.query('DELETE FROM products WHERE id = $1', [req.params.id]);
     res.status(204).end();
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[products]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -128,7 +133,8 @@ router.get('/:id/history', async (req, res) => {
     );
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[products]', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
