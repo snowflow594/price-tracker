@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db/pool');
 const { searchProducts, getProductPrice } = require('../scrapers/mercadolibre');
+const verifyToken = require('../middleware/auth');
+
+router.use(verifyToken);
 
 // Buscar productos en Mercado Libre
 router.get('/search', async (req, res) => {
@@ -25,8 +28,8 @@ router.post('/', async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      'INSERT INTO products (name, url, source) VALUES ($1, $2, $3) RETURNING *',
-      [name, url, source]
+      'INSERT INTO products (name, url, source, user_id) VALUES ($1, $2, $3, $4) RETURNING *',
+      [name, url, source, req.user.id]
     );
     const product = rows[0];
 
@@ -55,7 +58,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Listar todos los productos con su último precio
+// Listar todos los productos del usuario con su último precio
 router.get('/', async (req, res) => {
   try {
     const { rows } = await pool.query(`
@@ -68,8 +71,9 @@ router.get('/', async (req, res) => {
         ORDER BY scraped_at DESC
         LIMIT 1
       )
+      WHERE p.user_id = $1
       ORDER BY p.created_at DESC
-    `);
+    `, [req.user.id]);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -82,8 +86,8 @@ router.patch('/:id/target', async (req, res) => {
   if (target_price == null) return res.status(400).json({ error: 'Falta target_price' });
   try {
     const { rows } = await pool.query(
-      'UPDATE products SET target_price = $1, alert_sent_at = NULL WHERE id = $2 RETURNING id, target_price',
-      [target_price, req.params.id]
+      'UPDATE products SET target_price = $1, alert_sent_at = NULL WHERE id = $2 AND user_id = $3 RETURNING id, target_price',
+      [target_price, req.params.id, req.user.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Producto no encontrado' });
     res.json(rows[0]);
@@ -95,6 +99,12 @@ router.patch('/:id/target', async (req, res) => {
 // Eliminar un producto y su historial
 router.delete('/:id', async (req, res) => {
   try {
+    const { rows } = await pool.query(
+      'SELECT id FROM products WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Producto no encontrado' });
+
     await pool.query('DELETE FROM price_history WHERE product_id = $1', [req.params.id]);
     await pool.query('DELETE FROM products WHERE id = $1', [req.params.id]);
     res.status(204).end();
@@ -106,6 +116,12 @@ router.delete('/:id', async (req, res) => {
 // Historial de precios de un producto
 router.get('/:id/history', async (req, res) => {
   try {
+    const { rows: product } = await pool.query(
+      'SELECT id FROM products WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+    if (!product.length) return res.status(404).json({ error: 'Producto no encontrado' });
+
     const { rows } = await pool.query(
       'SELECT price, currency, scraped_at FROM price_history WHERE product_id = $1 ORDER BY scraped_at ASC',
       [req.params.id]

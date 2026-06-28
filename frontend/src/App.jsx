@@ -1,4 +1,7 @@
 import { useState, useRef } from 'react';
+import { useAuth } from './context/AuthContext';
+import Login from './pages/Login';
+import Register from './pages/Register';
 import Search from './pages/Search';
 import Dashboard from './pages/Dashboard';
 import Icon from './components/Icon';
@@ -35,7 +38,13 @@ const FOOTER_MODALS = {
   },
 };
 
+function getInitials(email) {
+  return (email?.split('@')[0] ?? '?').slice(0, 2).toUpperCase();
+}
+
 export default function App() {
+  const { user, logout, loading } = useAuth();
+  const [authView, setAuthView] = useState('login');
   const [view, setView] = useState('dashboard');
   const [lang, setLang] = useState('es');
   const [monitoredUrls, setMonitoredUrls] = useState([]);
@@ -43,7 +52,16 @@ export default function App() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [toast, setToast] = useState(null);
   const [footerModal, setFooterModal] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const toastTimer = useRef(null);
+
+  if (loading) return null;
+
+  if (!user) {
+    return authView === 'register'
+      ? <Register onSwitch={() => setAuthView('login')} />
+      : <Login onSwitch={() => setAuthView('register')} />;
+  }
 
   function showToast(msg, tone = 'success') {
     setToast({ msg, tone });
@@ -64,6 +82,11 @@ export default function App() {
   function nav(to) {
     setView(to);
     setToast(null);
+  }
+
+  function handleLogout() {
+    setDropdownOpen(false);
+    logout();
   }
 
   return (
@@ -134,10 +157,39 @@ export default function App() {
               <Icon name="bell" size={20} />
             </button>
 
-            {/* Sign In — placeholder for future auth */}
-            <button className="px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-bold hover:opacity-90 transition-opacity">
-              {lang === 'en' ? 'Sign In' : 'Iniciar sesión'}
-            </button>
+            {/* User dropdown */}
+            <div className="relative">
+              {dropdownOpen && (
+                <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
+              )}
+              <button
+                onClick={() => setDropdownOpen(o => !o)}
+                className="relative z-50 flex items-center gap-2 p-1 pl-3 pr-2 rounded-full border border-outline-variant hover:bg-surface-container transition-all"
+              >
+                <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-xs">
+                  {getInitials(user.email)}
+                </div>
+                <span className="material-symbols-outlined text-outline" style={{ fontSize: 20 }}>
+                  expand_more
+                </span>
+              </button>
+
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-52 bg-surface border border-outline-variant rounded-xl shadow-xl py-2 z-50">
+                  <div className="px-4 py-3 border-b border-outline-variant">
+                    <p className="text-xs font-semibold text-on-surface">Mi cuenta</p>
+                    <p className="text-xs text-on-surface-variant truncate mt-0.5">{user.email}</p>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-error hover:bg-error-container/20 transition-colors"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 20 }}>logout</span>
+                    <span className="text-sm font-semibold">Cerrar sesión</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </nav>
       </header>
