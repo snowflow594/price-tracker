@@ -1,7 +1,5 @@
-const dns = require('dns');
-const { promisify } = require('util');
-const resolve4 = promisify(dns.resolve4);
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 function escapeHtml(str) {
   return String(str)
@@ -21,17 +19,6 @@ function isSafeUrl(str) {
 }
 
 async function sendPriceAlert({ to, productName, currentPrice, targetPrice, currency, url, source }) {
-  const [smtpIp] = await resolve4('smtp.gmail.com');
-  const transporter = nodemailer.createTransport({
-    host: smtpIp,
-    port: 465,
-    secure: true,
-    tls: { servername: 'smtp.gmail.com' },
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD.replace(/\s/g, ''),
-    },
-  });
   const symbol = currency === 'USD' ? '$' : 'S/';
   const platformLabel = source === 'amazon' ? 'Amazon' : source === 'falabella' ? 'Falabella' : escapeHtml(source);
   const safeProductName = escapeHtml(productName);
@@ -78,8 +65,8 @@ async function sendPriceAlert({ to, productName, currentPrice, targetPrice, curr
 </body>
 </html>`;
 
-  await transporter.sendMail({
-    from: `"Price Tracker" <${process.env.GMAIL_USER}>`,
+  await resend.emails.send({
+    from: 'Price Tracker <onboarding@resend.dev>',
     to,
     subject: `🎯 ¡${productName.slice(0, 50)} bajó de precio!`,
     html,
