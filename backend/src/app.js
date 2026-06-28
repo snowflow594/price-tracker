@@ -8,6 +8,7 @@ const path = require('path');
 const productsRouter = require('./routes/products');
 const amazonRouter = require('./routes/amazon');
 const falabellaRouter = require('./routes/falabella');
+const authRouter = require('./routes/auth');
 const { updateAllPrices } = require('./jobs/priceUpdater');
 
 const app = express();
@@ -15,6 +16,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use('/api/auth', authRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/amazon', amazonRouter);
 app.use('/api/falabella', falabellaRouter);
@@ -41,6 +43,7 @@ async function runMigration() {
     // Add columns added after initial migration (idempotent)
     await pool.query('ALTER TABLE products ADD COLUMN IF NOT EXISTS target_price NUMERIC');
     await pool.query('ALTER TABLE products ADD COLUMN IF NOT EXISTS alert_sent_at TIMESTAMP');
+    await pool.query('ALTER TABLE products ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE');
     console.log('Base de datos lista.');
   } catch (err) {
     console.error('Error en migración:', err.message);
