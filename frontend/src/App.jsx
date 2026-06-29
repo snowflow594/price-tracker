@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Search from './pages/Search';
 import Dashboard from './pages/Dashboard';
 import Icon from './components/Icon';
+import { getProducts } from './services/api';
 import './App.css';
 
 const FOOTER_MODALS = {
@@ -54,6 +55,13 @@ export default function App() {
   const [footerModal, setFooterModal] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const toastTimer = useRef(null);
+
+  useEffect(() => {
+    if (!user) { setMonitoredUrls([]); return; }
+    getProducts()
+      .then(products => setMonitoredUrls(products.map(p => p.url)))
+      .catch(() => {});
+  }, [user]);
 
   if (loading) return null;
 
