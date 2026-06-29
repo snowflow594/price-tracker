@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { searchFalabella, addProduct } from '../services/api';
+import { searchFalabella, searchML, addProduct } from '../services/api';
 import Icon from '../components/Icon';
 import { money, thumbHue } from '../utils/format';
 
@@ -50,9 +50,19 @@ const T = {
   },
 };
 
+function sourceCurrency(source) {
+  return source === 'amazon' ? 'USD' : 'PEN';
+}
+
+function sourceLabel(source) {
+  if (source === 'falabella') return 'Falabella';
+  if (source === 'mercadolibre') return 'Mercado Libre';
+  return 'Amazon';
+}
+
 function ProductCard({ item, isMonitored, onToggle, saving, lang }) {
   const t = T[lang];
-  const currency = item.source === 'falabella' ? 'PEN' : 'USD';
+  const currency = sourceCurrency(item.source);
   const hue = thumbHue(item.name);
 
   return (
@@ -70,7 +80,7 @@ function ProductCard({ item, isMonitored, onToggle, saving, lang }) {
         </span>
         {/* Platform badge */}
         <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-outline-variant text-on-surface-variant">
-          {item.source === 'falabella' ? 'Falabella' : 'Amazon'}
+          {sourceLabel(item.source)}
         </div>
       </div>
 
@@ -127,6 +137,11 @@ export default function Search({ lang, monitoredUrls, onAdded }) {
   const showHero = !hasResults && !loading && !error && query.trim() === '';
   const canLoadMore = results.length >= limit && limit < MAX_LIMIT;
 
+  function searchByPlatform(q, plat, lim) {
+    if (plat === 'mercadolibre') return searchML(q, lim);
+    return searchFalabella(q, lim);
+  }
+
   async function doSearch(q, plat, lim = STEP) {
     if (!q.trim()) return;
     const activePlatform = plat ?? platform;
@@ -142,7 +157,7 @@ export default function Search({ lang, monitoredUrls, onAdded }) {
     setResults([]);
     setLimit(lim);
     try {
-      const data = await searchFalabella(q, lim);
+      const data = await searchByPlatform(q, activePlatform, lim);
       setResults(data);
       if (!data.length) setError(t.noResults);
     } catch {
@@ -155,7 +170,7 @@ export default function Search({ lang, monitoredUrls, onAdded }) {
     const newLimit = limit + STEP;
     setLoadingMore(true);
     try {
-      const data = await searchFalabella(query, newLimit);
+      const data = await searchByPlatform(query, platform, newLimit);
       setResults(data);
       setLimit(newLimit);
     } catch { /* silencioso */ }
@@ -194,7 +209,7 @@ export default function Search({ lang, monitoredUrls, onAdded }) {
   async function handleToggle(item) {
     setSaving(s => ({ ...s, [item.url]: true }));
     try {
-      const currency = item.source === 'amazon' ? 'USD' : 'PEN';
+      const currency = sourceCurrency(item.source);
       await addProduct({ name: item.name, url: item.url, source: item.source, initial_price: item.price, currency });
       onAdded(item);
     } catch { /* silencioso */ }
@@ -255,8 +270,9 @@ export default function Search({ lang, monitoredUrls, onAdded }) {
         {/* Platform toggle */}
         <div className="flex items-center gap-2 mt-3">
           {[
-            { k: 'falabella', label: 'Falabella', color: '#006c49' },
-            { k: 'amazon',    label: 'Amazon',    color: '#ba1a1a' },
+            { k: 'falabella',     label: 'Falabella',      color: '#006c49' },
+            { k: 'mercadolibre', label: 'Mercado Libre',  color: '#ffe600' },
+            { k: 'amazon',        label: 'Amazon',          color: '#ba1a1a' },
           ].map(o => (
             <button
               key={o.k}

@@ -9,6 +9,7 @@ const path = require('path');
 const productsRouter = require('./routes/products');
 const amazonRouter = require('./routes/amazon');
 const falabellaRouter = require('./routes/falabella');
+const mercadolibreRouter = require('./routes/mercadolibre');
 const authRouter = require('./routes/auth');
 const verifyToken = require('./middleware/auth');
 const { updateAllPrices } = require('./jobs/priceUpdater');
@@ -34,6 +35,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/amazon', amazonRouter);
 app.use('/api/falabella', falabellaRouter);
+app.use('/api/mercadolibre', mercadolibreRouter);
 
 app.post('/api/jobs/update-prices', verifyToken, async (req, res) => {
   res.json({ message: 'Actualización iniciada en background.' });
