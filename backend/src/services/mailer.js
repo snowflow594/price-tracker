@@ -1,5 +1,10 @@
 const { Resend } = require('resend');
-const resend = new Resend(process.env.RESEND_API_KEY);
+
+let _resend = null;
+function getResend() {
+  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY);
+  return _resend;
+}
 
 function escapeHtml(str) {
   return String(str)
@@ -65,7 +70,7 @@ async function sendPriceAlert({ to, productName, currentPrice, targetPrice, curr
 </body>
 </html>`;
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: 'Price Tracker <onboarding@resend.dev>',
     to,
     subject: `🎯 ¡${productName.slice(0, 50)} bajó de precio!`,
