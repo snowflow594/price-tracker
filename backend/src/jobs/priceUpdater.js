@@ -2,12 +2,12 @@ const cron = require('node-cron');
 const pool = require('../db/pool');
 const { getProductPrice: getFalabellaPrice } = require('../scrapers/falabella');
 const { getProductPrice: getAmazonPrice } = require('../scrapers/amazon');
+const { getProductPrice: getMercadoLibrePrice } = require('../scrapers/mercadolibre');
 const { sendPriceAlert } = require('../services/mailer');
 
 async function fetchCurrentPrice(product) {
-  if (product.source === 'amazon') {
-    return getAmazonPrice(product.url);
-  }
+  if (product.source === 'amazon') return getAmazonPrice(product.url);
+  if (product.source === 'mercadolibre') return getMercadoLibrePrice(product.url);
   return getFalabellaPrice(product.url);
 }
 
