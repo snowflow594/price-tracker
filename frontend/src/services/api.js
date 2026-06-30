@@ -11,7 +11,6 @@ api.interceptors.request.use(config => {
 export const loginUser  = (email, password) => api.post('/api/auth/login', { email, password }).then(r => r.data);
 export const register   = (email, password) => api.post('/api/auth/register', { email, password }).then(r => r.data);
 
-export const searchML        = (q)              => api.get(`/api/products/search?q=${encodeURIComponent(q)}`).then(r => r.data);
 export const searchFalabella = (q, limit = 10)  => api.get(`/api/falabella/search?q=${encodeURIComponent(q)}&limit=${limit}`).then(r => r.data);
 export const searchAmazon    = (q, limit = 10)  => api.get(`/api/amazon/search?q=${encodeURIComponent(q)}&limit=${limit}`).then(r => r.data);
 export const getProducts     = ()               => api.get('/api/products').then(r => r.data);
