@@ -1,24 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/pool');
-const { searchProducts, getProductPrice } = require('../scrapers/mercadolibre');
 const verifyToken = require('../middleware/auth');
 
 router.use(verifyToken);
-
-// Buscar productos en Mercado Libre
-router.get('/search', async (req, res) => {
-  const { q } = req.query;
-  if (!q) return res.status(400).json({ error: 'Falta el parámetro q' });
-
-  try {
-    const results = await searchProducts(q);
-    res.json(results);
-  } catch (err) {
-    console.error('[products]', err.message);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
 
 // Guardar un producto y registrar su precio actual
 router.post('/', async (req, res) => {
@@ -39,18 +24,6 @@ router.post('/', async (req, res) => {
         'INSERT INTO price_history (product_id, price, currency) VALUES ($1, $2, $3)',
         [product.id, initial_price, currency]
       );
-    } else {
-      try {
-        const scraped = await getProductPrice(url);
-        if (scraped?.price) {
-          await pool.query(
-            'INSERT INTO price_history (product_id, price, currency) VALUES ($1, $2, $3)',
-            [product.id, scraped.price, scraped.currency]
-          );
-        }
-      } catch (scrapeErr) {
-        console.warn(`Precio inicial no obtenido para "${name}": ${scrapeErr.message}`);
-      }
     }
 
     res.status(201).json(product);
