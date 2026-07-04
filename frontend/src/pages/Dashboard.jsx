@@ -35,6 +35,8 @@ const T = {
     chartTitle: 'Historial de precios',
     inStock: 'Disponible',
     loading: 'Cargando…',
+    deleteError: 'Error al eliminar el producto',
+    targetError: 'Error al guardar el objetivo',
     target: 'Objetivo',
     currentPrice: 'Precio actual',
     historicalLow: 'Mín. histórico',
@@ -71,6 +73,8 @@ const T = {
     chartTitle: 'Price History',
     inStock: 'In Stock',
     loading: 'Loading…',
+    deleteError: 'Failed to remove product',
+    targetError: 'Failed to save target price',
     target: 'Target',
     currentPrice: 'Current price',
     historicalLow: 'All-time low',
@@ -310,7 +314,7 @@ function WatchlistRow({ product, history, lang, onRemove, onTarget, onViewChart 
 }
 
 /* ── Main Dashboard ── */
-export default function Dashboard({ lang, goSearch, refreshTrigger, onAlertCount }) {
+export default function Dashboard({ lang, goSearch, refreshTrigger, onAlertCount, onToast }) {
   const t = T[lang];
   const [products, setProducts] = useState([]);
   const [histories, setHistories] = useState({});
@@ -345,21 +349,54 @@ export default function Dashboard({ lang, goSearch, refreshTrigger, onAlertCount
 
   async function handleUpdate() {
     setUpdating(true);
+    const snapshot = Object.fromEntries(products.map(p => [p.id, String(p.price)]));
     await triggerUpdate();
-    setTimeout(() => { setUpdating(false); loadAll(); }, 40000);
+
+    let elapsed = 0;
+    const poll = setInterval(async () => {
+      elapsed += 5000;
+      try {
+        const data = await getProducts();
+        const changed = data.some(p => String(p.price) !== snapshot[p.id]);
+        if (changed || elapsed >= 90000) {
+          clearInterval(poll);
+          setProducts(data);
+          computeAlerts(data);
+          const hMap = {};
+          await Promise.all(data.map(async p => {
+            try { hMap[p.id] = await getPriceHistory(p.id); } catch { hMap[p.id] = []; }
+          }));
+          setHistories(hMap);
+          setUpdating(false);
+        }
+      } catch {
+        if (elapsed >= 90000) { clearInterval(poll); setUpdating(false); }
+      }
+    }, 5000);
   }
 
   async function handleRemove(id) {
+    const removed = products.find(p => p.id === id);
     setProducts(ps => {
       const next = ps.filter(p => p.id !== id);
       computeAlerts(next);
       return next;
     });
-    try { await deleteProduct(id); } catch { /* silencioso */ }
+    try {
+      await deleteProduct(id);
+    } catch {
+      setProducts(ps => {
+        const next = [...ps, removed].sort((a, b) => a.id - b.id);
+        computeAlerts(next);
+        return next;
+      });
+      onToast?.(t.deleteError, 'error');
+    }
   }
 
   async function saveTarget(val) {
     const id = targetModal.id;
+    setTargetModal(null);
     try {
       await setProductTarget(id, val);
       setProducts(ps => {
@@ -367,8 +404,9 @@ export default function Dashboard({ lang, goSearch, refreshTrigger, onAlertCount
         computeAlerts(next);
         return next;
       });
-    } catch { /* silencioso */ }
-    setTargetModal(null);
+    } catch {
+      onToast?.(t.targetError, 'error');
+    }
   }
 
   const totalProducts = products.length;

@@ -12,15 +12,15 @@ const FOOTER_MODALS = {
   'Política de privacidad': {
     en: { title: 'Privacy Policy', body: [
       'Price Tracker is a personal portfolio project developed by Estefano Quispe.',
-      'This site does not collect, store, or share personal data of any kind.',
-      'No login is required and no tracking cookies are used.',
-      'Prices displayed are fetched from public sources (Mercado Libre official API) and are provided for informational purposes only. They may not reflect real-time availability or current offers.',
+      'Price Tracker stores your email address for account authentication and price alert notifications. No other personal data is collected or shared.',
+      'Login is required to use Price Tracker. No tracking cookies are used.',
+      'Prices displayed are fetched from public sources (Falabella via web scraping) and are provided for informational purposes only. They may not reflect real-time availability or current offers.',
     ]},
     es: { title: 'Política de privacidad', body: [
       'Price Tracker es un proyecto personal de portafolio desarrollado por Estefano Quispe.',
-      'Este sitio no recopila, almacena ni comparte datos personales de ningún tipo.',
-      'No se requiere inicio de sesión y no se utilizan cookies de seguimiento.',
-      'Los precios mostrados se obtienen de fuentes públicas (API oficial de Mercado Libre) y se presentan solo con fines informativos. Pueden no reflejar disponibilidad en tiempo real ni ofertas actuales.',
+      'Price Tracker almacena tu correo electrónico para autenticación y notificaciones de alertas de precio. No se recopilan ni comparten otros datos personales.',
+      'Se requiere inicio de sesión para usar Price Tracker. No se utilizan cookies de seguimiento.',
+      'Los precios mostrados se obtienen de fuentes públicas (Falabella mediante web scraping) y se presentan solo con fines informativos. Pueden no reflejar disponibilidad en tiempo real ni ofertas actuales.',
     ]},
   },
   'Términos de uso': {
@@ -216,6 +216,7 @@ export default function App() {
               goSearch={() => nav('dashboard')}
               refreshTrigger={refreshTrigger}
               onAlertCount={setAlertCount}
+              onToast={showToast}
             />
         }
       </main>
