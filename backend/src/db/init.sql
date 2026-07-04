@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS products (
   source VARCHAR(50) NOT NULL,
   created_at TIMESTAMP DEFAULT NOW(),
   target_price NUMERIC,
-  alert_sent_at TIMESTAMP
+  alert_sent_at TIMESTAMP,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS price_history (

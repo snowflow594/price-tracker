@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { api } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -6,6 +7,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+  const logoutRef = useRef(null);
 
   useEffect(() => {
     const t = localStorage.getItem('pt_token') || sessionStorage.getItem('pt_token');
@@ -33,6 +35,24 @@ export function AuthProvider({ children }) {
     setToken(null);
     setUser(null);
   }
+
+  logoutRef.current = logout;
+
+  useEffect(() => {
+    const interceptorId = api.interceptors.response.use(
+      response => response,
+      error => {
+        if (error.response?.status === 401) {
+          const url = error.config?.url || '';
+          if (!url.includes('/api/auth/')) {
+            logoutRef.current();
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+    return () => api.interceptors.response.eject(interceptorId);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, token, login, logout, loading }}>
