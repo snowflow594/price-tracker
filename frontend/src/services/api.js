@@ -19,3 +19,4 @@ export const getPriceHistory = (id)             => api.get(`/api/products/${id}/
 export const deleteProduct   = (id)             => api.delete(`/api/products/${id}`);
 export const setProductTarget = (id, target_price) => api.patch(`/api/products/${id}/target`, { target_price }).then(r => r.data);
 export const triggerUpdate   = ()               => api.post('/api/jobs/update-prices').then(r => r.data);
+export const getAlerts       = ()               => api.get('/api/alerts').then(r => r.data);
