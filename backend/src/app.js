@@ -10,6 +10,7 @@ const productsRouter = require('./routes/products');
 const amazonRouter = require('./routes/amazon');
 const falabellaRouter = require('./routes/falabella');
 const authRouter = require('./routes/auth');
+const alertsRouter = require('./routes/alerts');
 const verifyToken = require('./middleware/auth');
 const { updateAllPrices } = require('./jobs/priceUpdater');
 
@@ -32,6 +33,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRouter);
 app.use('/api/products', productsRouter);
+app.use('/api/alerts', alertsRouter);
 app.use('/api/amazon', amazonRouter);
 app.use('/api/falabella', falabellaRouter);
 

@@ -32,6 +32,10 @@ async function checkAndSendAlert(product, newPrice, currency) {
       source: product.source,
     });
     await pool.query('UPDATE products SET alert_sent_at = NOW() WHERE id = $1', [product.id]);
+    await pool.query(
+      'INSERT INTO alerts (user_id, product_id, product_name, price, currency, target_price) VALUES ($1, $2, $3, $4, $5, $6)',
+      [product.user_id, product.id, product.name, newPrice, currency, target]
+    );
     console.log(`  📧 Alerta enviada para "${product.name.slice(0, 40)}"`);
   } catch (err) {
     console.error(`  ✗ Error enviando alerta: ${err.message}`);
@@ -42,7 +46,7 @@ async function updateAllPrices() {
   console.log(`[${new Date().toISOString()}] Iniciando actualización de precios...`);
 
   const { rows: products } = await pool.query(`
-    SELECT p.id, p.name, p.url, p.source, p.target_price, p.alert_sent_at, u.email AS user_email
+    SELECT p.id, p.user_id, p.name, p.url, p.source, p.target_price, p.alert_sent_at, u.email AS user_email
     FROM products p
     JOIN users u ON u.id = p.user_id
     WHERE p.user_id IS NOT NULL

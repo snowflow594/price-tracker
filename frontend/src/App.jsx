@@ -5,7 +5,8 @@ import Register from './pages/Register';
 import Search from './pages/Search';
 import Dashboard from './pages/Dashboard';
 import Icon from './components/Icon';
-import { getProducts } from './services/api';
+import { getProducts, getAlerts } from './services/api';
+import { money, fmtDate } from './utils/format';
 import './App.css';
 
 const FOOTER_MODALS = {
@@ -50,6 +51,8 @@ export default function App() {
   const [lang, setLang] = useState('es');
   const [monitoredUrls, setMonitoredUrls] = useState([]);
   const [alertCount, setAlertCount] = useState(0);
+  const [alerts, setAlerts] = useState([]);
+  const [bellOpen, setBellOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [toast, setToast] = useState(null);
   const [footerModal, setFooterModal] = useState(null);
@@ -57,9 +60,12 @@ export default function App() {
   const toastTimer = useRef(null);
 
   useEffect(() => {
-    if (!user) { setMonitoredUrls([]); return; }
+    if (!user) { setMonitoredUrls([]); setAlerts([]); return; }
     getProducts()
       .then(products => setMonitoredUrls(products.map(p => p.url)))
+      .catch(() => {});
+    getAlerts()
+      .then(setAlerts)
       .catch(() => {});
   }, [user]);
 
@@ -161,9 +167,55 @@ export default function App() {
             </div>
 
             {/* Bell */}
-            <button className="p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container transition-colors">
-              <Icon name="bell" size={20} />
-            </button>
+            <div className="relative">
+              {bellOpen && (
+                <div className="fixed inset-0 z-40" onClick={() => setBellOpen(false)} />
+              )}
+              <button
+                onClick={() => setBellOpen(o => !o)}
+                className="relative z-50 p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container transition-colors"
+                aria-label={lang === 'en' ? 'Alert history' : 'Historial de alertas'}
+              >
+                <Icon name="bell" size={20} />
+                {alerts.length > 0 && (
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary" />
+                )}
+              </button>
+
+              {bellOpen && (
+                <div className="absolute right-0 mt-2 w-80 bg-surface border border-outline-variant rounded-xl shadow-xl z-50 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-outline-variant">
+                    <p className="text-xs font-semibold text-on-surface">
+                      {lang === 'en' ? 'Alert history' : 'Historial de alertas'}
+                    </p>
+                  </div>
+                  {alerts.length === 0 ? (
+                    <div className="px-4 py-8 text-center">
+                      <Icon name="bell" size={28} className="text-outline mx-auto mb-2" />
+                      <p className="text-xs text-on-surface-variant">
+                        {lang === 'en'
+                          ? 'No alerts sent yet. Set a target price on a product to get started.'
+                          : 'Aún no se enviaron alertas. Fija un precio objetivo en un producto para comenzar.'}
+                      </p>
+                    </div>
+                  ) : (
+                    <ul className="max-h-80 overflow-y-auto divide-y divide-outline-variant">
+                      {alerts.map(a => (
+                        <li key={a.id} className="px-4 py-3 flex flex-col gap-0.5">
+                          <p className="text-sm font-medium text-on-surface truncate">{a.product_name}</p>
+                          <p className="text-xs text-on-surface-variant">
+                            {money(a.price, a.currency)}
+                            <span className="mx-1 text-outline">·</span>
+                            {lang === 'en' ? 'target' : 'objetivo'} {money(a.target_price, a.currency)}
+                          </p>
+                          <p className="text-xs text-outline">{fmtDate(a.sent_at, lang)}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* User dropdown */}
             <div className="relative">
